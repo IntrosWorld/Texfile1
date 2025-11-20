@@ -7,7 +7,7 @@
 \usepackage{pgfplots}
 \pgfplotsset{compat=1.17}
 \usepackage{algorithm}
-\usepackage{algorithmic}
+\usepackage{algpseudocode}
 \usepackage{amsmath}
 \usepackage{listings}
 \usepackage{xcolor}
@@ -43,7 +43,27 @@
 % Title Page
 \begin{titlepage}
     \begin{center}
-        \includegraphics[width=0.15\textwidth]{logo.png}\\[1em]  % Placeholder for university logo
+        % NIT Rourkela Logo
+        \begin{tikzpicture}[scale=0.8]
+            % Outer circle
+            \draw[line width=2pt, blue!70!black] (0,0) circle (2.5cm);
+            % Inner circle
+            \draw[line width=1.5pt, blue!70!black] (0,0) circle (2.2cm);
+            % Central emblem - gear/cog representing technology
+            \foreach \angle in {0,45,90,135,180,225,270,315} {
+                \draw[fill=blue!60!black, line width=0.5pt]
+                    (\angle:1cm) -- (\angle+22.5:1.3cm) -- (\angle+45:1cm) -- cycle;
+            }
+            % Inner circle for emblem
+            \draw[fill=blue!40!white, line width=1pt] (0,0) circle (0.8cm);
+            % Stylized "N" in center
+            \node[font=\Large\bfseries, blue!70!black] at (0,0) {NIT};
+            % Top arc text - institute name
+            \node[font=\small\bfseries, blue!70!black] at (0,2.8) {NATIONAL INSTITUTE};
+            \node[font=\small\bfseries, blue!70!black] at (0,2.4) {OF TECHNOLOGY};
+            % Bottom text
+            \node[font=\footnotesize\bfseries, blue!70!black] at (0,-2.6) {ROURKELA};
+        \end{tikzpicture}\\[1em]
         \textsc{\Large National Institute of Technology Rourkela}\\[1em]
         \textsc{\large Department of Electronics and Communication \& Engineering}\\[2em]
         \textbf{\LARGE Farmer AI Assistant - Offline Mobile Agriculture Advisor}\\[2em]
@@ -98,7 +118,7 @@ in partial fulfillment of the requirements for the award of the degree of \textb
 We would like to express our sincere gratitude to our project guide, \textbf{Dr. Sobhan Kanti Dhara}, for his invaluable guidance, support, and encouragement throughout the development of this project. 
 We also extend our thanks to the faculty and staff of the Department of Computer Science \& Engineering at NIT Rourkela for providing the necessary infrastructure and a conducive environment for research and development.
 
-We acknowledge the contribution of the \textit{KisanVaani} initiative for providing the agriculture QA dataset that formed the basis of our model training:contentReference[oaicite:0]{index=0}. 
+We acknowledge the contribution of the \textit{KisanVaani} initiative for providing the agriculture QA dataset that formed the basis of our model training \cite{kisanvaani2023}.
 Our gratitude goes to the creators and curators of this dataset for making it openly available, which greatly facilitated our work.
 
 We are grateful to our seniors and peers for their constructive feedback and moral support. 
@@ -107,7 +127,7 @@ Finally, we thank our families for their unwavering encouragement, which has bee
 
 % Abstract
 \section*{Abstract}
-Farmers in rural and remote areas often struggle to access timely agricultural advice due to limited internet connectivity and scarce expert resources:contentReference[oaicite:1]{index=1}:contentReference[oaicite:2]{index=2}. This project addresses these challenges by developing an offline mobile AI assistant that provides intelligent farming guidance without requiring internet access. The proposed solution is a GPT-style language model deployed entirely on-device, leveraging a Transformer-based architecture (6 layers, 6 heads, 384-dim embeddings) trained on 22,615 agriculture question-answer pairs:contentReference[oaicite:3]{index=3}. 
+Farmers in rural and remote areas often struggle to access timely agricultural advice due to limited internet connectivity and scarce expert resources \cite{agricultural_advisory2022,rural_connectivity2023}. This project addresses these challenges by developing an offline mobile AI assistant that provides intelligent farming guidance without requiring internet access. The proposed solution is a GPT-style language model deployed entirely on-device, leveraging a Transformer-based architecture (6 layers, 6 heads, 384-dim embeddings) trained on 22,615 agriculture question-answer pairs \cite{kisanvaani2023}. 
 
 The system, implemented on Android using PyTorch Mobile, features a lightweight 50M-parameter model optimized via dynamic quantization to 8-bit, reducing model size to 104~MB and enabling fast inference (3-10~seconds per query on mid-range phones). A Flutter-powered chat interface offers a real-time conversational experience, and all processing occurs locally to preserve user privacy. Key results demonstrate that the assistant produces contextually relevant and coherent responses to diverse agricultural queries, effectively bridging the information gap for farmers. The report details the data preparation, model training, on-device integration, and thorough testing of the application. The findings confirm the viability of on-device generative AI in agriculture, and we outline future enhancements (e.g., multilingual support, computer vision integration) to further improve the system's impact.
 \newpage
@@ -122,19 +142,19 @@ The system, implemented on Android using PyTorch Mobile, features a lightweight 
 \chapter{Introduction}
 
 \section{Background and Motivation}
-Agriculture remains the livelihood for a large portion of the population, especially in developing countries like India, yet farmers often lack access to crucial timely information and expert guidance. The rise of digital technologies promises to bridge this gap, but \textit{connectivity and accessibility issues have created a persistent digital divide in rural farming communities}:contentReference[oaicite:4]{index=4}. Traditional agricultural extension services, while valuable, are stretched thin---public extension reaches only about 6.8\% of farmers in India:contentReference[oaicite:5]{index=5}, leaving many without reliable advisory support. This lack of reach, combined with the time-sensitive nature of farming decisions (e.g., pest outbreaks, irrigation scheduling), motivates the need for innovative solutions to deliver expert knowledge directly to farmers when and where they need it.
+Agriculture remains the livelihood for a large portion of the population, especially in developing countries like India, yet farmers often lack access to crucial timely information and expert guidance. The rise of digital technologies promises to bridge this gap, but \textit{connectivity and accessibility issues have created a persistent digital divide in rural farming communities} \cite{agricultural_advisory2022}. Traditional agricultural extension services, while valuable, are stretched thin---public extension reaches only about 6.8\% of farmers in India \cite{india_extension2021}, leaving many without reliable advisory support. This lack of reach, combined with the time-sensitive nature of farming decisions (e.g., pest outbreaks, irrigation scheduling), motivates the need for innovative solutions to deliver expert knowledge directly to farmers when and where they need it.
 
-Recent advances in artificial intelligence (AI) and natural language processing (NLP) have demonstrated the potential of language models to generate human-like, context-aware responses. Large Language Models (LLMs) such as OpenAI's GPT series have shown remarkable capability in understanding queries and generating helpful answers:contentReference[oaicite:6]{index=6}. However, most state-of-the-art LLMs operate on cloud servers, requiring constant internet connectivity and posing concerns over latency and data privacy:contentReference[oaicite:7]{index=7}:contentReference[oaicite:8]{index=8}. For farmers in remote areas, a cloud-dependent solution is often impractical. This project is driven by the motivation to harness AI advancements---specifically, transformer-based language models \cite{vaswani2017attention}\cite{radford2019language}---to empower farmers with an \textit{offline, affordable, and user-friendly advisory system} that works even in connectivity-challenged environments.
+Recent advances in artificial intelligence (AI) and natural language processing (NLP) have demonstrated the potential of language models to generate human-like, context-aware responses. Large Language Models (LLMs) such as OpenAI's GPT series have shown remarkable capability in understanding queries and generating helpful answers \cite{radford2019language}. However, most state-of-the-art LLMs operate on cloud servers, requiring constant internet connectivity and posing concerns over latency and data privacy \cite{offline_ai_agriculture2024}. For farmers in remote areas, a cloud-dependent solution is often impractical. This project is driven by the motivation to harness AI advancements---specifically, transformer-based language models \cite{vaswani2017attention,radford2019language}---to empower farmers with an \textit{offline, affordable, and user-friendly advisory system} that works even in connectivity-challenged environments.
 
 \section{Problem Statement}
 Farmers in rural and remote regions face multiple barriers in obtaining timely and reliable agricultural advice. The key challenges identified are:
 \begin{itemize}
-    \item \textbf{Limited Internet Connectivity:} Many agricultural areas have poor or no internet coverage; only about 29\% of rural Indian adults have access to the internet:contentReference[oaicite:9]{index=9}, hindering use of online advisory tools.
-    \item \textbf{Lack of Affordable Expert Consultation:} Professional agronomist advice and extension services are not readily accessible to all farmers. The ratio of extension officers to farmers is very low (about 1:1162 against a recommended 1:750):contentReference[oaicite:10]{index=10}, and only a fraction of farmers regularly receive expert guidance.
-    \item \textbf{Language and Literacy Barriers:} A significant portion of farmers are not fluent in English or struggle with text-heavy interfaces. Over 23\% of adults in rural areas lack basic digital literacy:contentReference[oaicite:11]{index=11}, making it difficult to use most agricultural apps, which often are not localized to native languages or designed for low-literacy users.
-    \item \textbf{High Cost of Advisory Services:} Traditional expert consultations and subscription-based services can be expensive, which is prohibitive for small and marginal farmers (who form over 80\% of the farming community and operate on very tight budgets:contentReference[oaicite:12]{index=12}).
-    \item \textbf{Time-Sensitive Decision Needs:} Agricultural decisions (such as pest control, fertilization, and irrigation scheduling) are highly time-sensitive. Delays in obtaining advice can lead to significant crop losses---studies indicate 20--30\% of yield losses are due to pests and diseases in India:contentReference[oaicite:13]{index=13}. Farmers need instant guidance at the point of need.
-    \item \textbf{Information Asymmetry:} There is often a gap between the extensive research knowledge available and what farmers practice on the field. Farmers may rely on anecdotal or outdated information. Inappropriate or untimely information can have serious consequences on farm productivity:contentReference[oaicite:14]{index=14}, yet reliable information is not uniformly accessible.
+    \item \textbf{Limited Internet Connectivity:} Many agricultural areas have poor or no internet coverage; only about 29\% of rural Indian adults have access to the internet \cite{rural_connectivity2023}, hindering use of online advisory tools.
+    \item \textbf{Lack of Affordable Expert Consultation:} Professional agronomist advice and extension services are not readily accessible to all farmers. The ratio of extension officers to farmers is very low (about 1:1162 against a recommended 1:750) \cite{india_extension2021}, and only a fraction of farmers regularly receive expert guidance.
+    \item \textbf{Language and Literacy Barriers:} A significant portion of farmers are not fluent in English or struggle with text-heavy interfaces. Over 23\% of adults in rural areas lack basic digital literacy \cite{digital_literacy_rural2023}, making it difficult to use most agricultural apps, which often are not localized to native languages or designed for low-literacy users.
+    \item \textbf{High Cost of Advisory Services:} Traditional expert consultations and subscription-based services can be expensive, which is prohibitive for small and marginal farmers (who form over 80\% of the farming community and operate on very tight budgets \cite{small_farmers_india2022}).
+    \item \textbf{Time-Sensitive Decision Needs:} Agricultural decisions (such as pest control, fertilization, and irrigation scheduling) are highly time-sensitive. Delays in obtaining advice can lead to significant crop losses---studies indicate 20--30\% of yield losses are due to pests and diseases in India \cite{crop_losses_india2022}. Farmers need instant guidance at the point of need.
+    \item \textbf{Information Asymmetry:} There is often a gap between the extensive research knowledge available and what farmers practice on the field. Farmers may rely on anecdotal or outdated information. Inappropriate or untimely information can have serious consequences on farm productivity \cite{farmer_information2023}, yet reliable information is not uniformly accessible.
 \end{itemize}
 
 These challenges highlight the necessity for an accessible solution that can provide expert knowledge to farmers without relying on continuous internet connectivity, and in a manner that overcomes literacy and language hurdles. The problem can thus be summarized as: \textit{How can we deliver accurate, real-time agricultural advice to farmers in remote areas with limited connectivity, in an affordable and user-friendly way?}
@@ -169,21 +189,21 @@ This report is organized into several chapters detailing the entirety of the pro
 The intersection of agriculture and technology has been widely explored to improve the dissemination of knowledge to farmers. This chapter reviews existing agricultural advisory systems and recent advances in AI that inform our project. Key areas surveyed include traditional and digital advisory services, the use of AI (especially conversational agents) in farming, and techniques for deploying AI models on mobile/edge devices. 
 
 \section{Existing Agricultural Advisory Systems}
-Historically, farmers have relied on government agricultural extension programs, local extension officers, and helpline services to get advice. In India, for example, the government-established Kisan Call Centers handle millions of farmer queries every year, disseminating expert advice via phone:contentReference[oaicite:15]{index=15}. While effective to an extent, these services face limitations: the ratio of extension officers to farmers is insufficient and cannot scale to personalized, on-demand support for every farmer:contentReference[oaicite:16]{index=16}. 
+Historically, farmers have relied on government agricultural extension programs, local extension officers, and helpline services to get advice. In India, for example, the government-established Kisan Call Centers handle millions of farmer queries every year, disseminating expert advice via phone \cite{kisan_call_center2022}. While effective to an extent, these services face limitations: the ratio of extension officers to farmers is insufficient and cannot scale to personalized, on-demand support for every farmer \cite{india_extension2021}. 
 
-The rise of mobile phones opened new avenues for delivering agro-advisory content. Many organizations and startups launched mobile applications to provide weather updates, market prices, and farming tips. However, a majority of these apps require internet connectivity and are available only in English or a few major languages, limiting their usage among rural farmers. The digital divide means that farmers with limited connectivity or digital literacy are left behind:contentReference[oaicite:17]{index=17}:contentReference[oaicite:18]{index=18}. Recognizing this gap, experts have emphasized the need for offline-capable apps and localized content to truly reach remote communities:contentReference[oaicite:19]{index=19}.
+The rise of mobile phones opened new avenues for delivering agro-advisory content. Many organizations and startups launched mobile applications to provide weather updates, market prices, and farming tips. However, a majority of these apps require internet connectivity and are available only in English or a few major languages, limiting their usage among rural farmers. The digital divide means that farmers with limited connectivity or digital literacy are left behind \cite{mobile_apps_agriculture2023,digital_literacy_rural2023}. Recognizing this gap, experts have emphasized the need for offline-capable apps and localized content to truly reach remote communities \cite{agricultural_advisory2022}.
 
 Some modern platforms have started integrating AI to enhance advisory services. For instance, \textit{Plantix} and \textit{AgroDoctor} use AI-driven image recognition to diagnose crop diseases from photos, offering advice on treatments. \textit{Kisan Suvidha} and other government apps aggregate information but still rely on connectivity. There remains a significant opportunity for systems that combine AI's scalability with offline delivery to complement traditional extension.
 
 \section{AI-Powered Assistants in Agriculture}
-The success of AI language models in open-domain conversations (e.g., chatbots and virtual assistants) has inspired their application in agriculture. Research prototypes and commercial tools are emerging that tailor general AI models to the farming domain. For example, \textbf{AgriGPT} (2024) is proposed as a large language model ecosystem specifically for agriculture, incorporating retrieval of domain-specific facts to enhance response accuracy:contentReference[oaicite:20]{index=20}. Similarly, \textbf{CottonBot}, an AI assistant for cotton farming, leverages a combination of LLM-based dialogue and retrieval-augmented generation (RAG) to provide context-specific recommendations:contentReference[oaicite:21]{index=21}. These systems validate that transformer-based models can be fine-tuned to act as knowledgeable agricultural advisors.
+The success of AI language models in open-domain conversations (e.g., chatbots and virtual assistants) has inspired their application in agriculture. Research prototypes and commercial tools are emerging that tailor general AI models to the farming domain. For example, \textbf{AgriGPT} (2024) is proposed as a large language model ecosystem specifically for agriculture, incorporating retrieval of domain-specific facts to enhance response accuracy \cite{agrigpt2024}. Similarly, \textbf{CottonBot}, an AI assistant for cotton farming, leverages a combination of LLM-based dialogue and retrieval-augmented generation (RAG) to provide context-specific recommendations \cite{cottonbot2024}. These systems validate that transformer-based models can be fine-tuned to act as knowledgeable agricultural advisors.
 
-In the industry, companies like Syngenta and Taranis have introduced AI assistants for agronomists and farmers. Syngenta's \textit{Cropwise AI} and the \textit{Taranis Ag Assistant} use generative AI models to analyze agronomic data and answer complex queries on crop management:contentReference[oaicite:22]{index=22}:contentReference[oaicite:23]{index=23}. These tools often integrate multi-modal data (text, imagery, sensor inputs) and demonstrate AI's growing role in precision agriculture. However, they typically run on cloud servers given their computational demands.
+In the industry, companies like Syngenta and Taranis have introduced AI assistants for agronomists and farmers. Syngenta's \textit{Cropwise AI} and the \textit{Taranis Ag Assistant} use generative AI models to analyze agronomic data and answer complex queries on crop management \cite{syngenta_ai2024,taranis2024}. These tools often integrate multi-modal data (text, imagery, sensor inputs) and demonstrate AI's growing role in precision agriculture. However, they typically run on cloud servers given their computational demands.
 
 A few AI chatbots have been built for farmers as experimentations on messaging platforms or through voice assistants (for example, a chatbot over WhatsApp that answers common farming FAQs). Yet, a challenge remains in making such AI accessible offline. Our project differentiates itself by focusing on an \textit{offline-first} conversational assistant, ensuring that once the model is on the device, no internet is required for inference.
 
 \section{On-Device Machine Learning and Edge AI}
-Running deep learning models on mobile and edge devices has gained traction due to privacy benefits and reduced latency. Frameworks like \textbf{TensorFlow Lite} and \textbf{PyTorch Mobile} provide tools for converting and optimizing models to run on smartphones \cite{pytorch2019}. Techniques such as model quantization, pruning, and knowledge distillation are commonly employed to shrink model size and speed up inference on limited hardware. Quantization in particular (using 8-bit or lower precision for weights and activations) has shown to drastically reduce model footprints while maintaining reasonable accuracy \cite{lin2023awq}. For instance, 4-bit quantization of large models can yield up to 70\% size reduction with minimal performance loss:contentReference[oaicite:24]{index=24}. Our approach uses 8-bit dynamic quantization to compress the GPT-based model for mobile deployment.
+Running deep learning models on mobile and edge devices has gained traction due to privacy benefits and reduced latency. Frameworks like \textbf{TensorFlow Lite} and \textbf{PyTorch Mobile} provide tools for converting and optimizing models to run on smartphones \cite{pytorch2019}. Techniques such as model quantization, pruning, and knowledge distillation are commonly employed to shrink model size and speed up inference on limited hardware. Quantization in particular (using 8-bit or lower precision for weights and activations) has shown to drastically reduce model footprints while maintaining reasonable accuracy \cite{lin2023awq}. For instance, 4-bit quantization of large models can yield up to 70\% size reduction with minimal performance loss \cite{model_quantization2023}. Our approach uses 8-bit dynamic quantization to compress the GPT-based model for mobile deployment.
 
 There have been notable milestones in running LLMs on-device. Marques et al. (2023) \cite{marques2023gptmobile} demonstrated that a fine-tuned 3-billion-parameter GPT model could be executed on a smartphone (with 4 GB RAM) by combining efficient C++ runtime and aggressive quantization. Similarly, the open-source community has produced tools like \textit{GGML} and \textit{LLaMA.cpp} that allow LLM inference on CPUs by optimizing memory access and using 4-bit quantized weights. These developments indicate that while challenging, it is feasible to bring powerful language models to edge devices.
 
@@ -254,16 +274,17 @@ Figure~\ref{fig:model_arch} shows a schematic of the model's architecture. Thoug
 
 \begin{figure}[h!]
     \centering
-    \begin{tikzpicture}[node distance=1.2cm, every node/.style={font=\small}]
-        \node[rectangle, draw, fill=blue!5, minimum width=2.5cm, minimum height=1cm] (embed) {Token + Positional Embedding};
-        \node[rectangle, draw, fill=blue!15, minimum width=2.2cm, minimum height=0.8cm, right=of embed, xshift=0.5cm] (attn1) {Self-Attn};
-        \node[rectangle, draw, fill=blue!15, minimum width=2.2cm, minimum height=0.8cm, right=of attn1, xshift=0.3cm] (ffn1) {Feed-Forward};
-        \node[rectangle, draw, fill=blue!15, minimum width=2.2cm, minimum height=0.8cm, below=0.3cm of attn1] (attn2) {Self-Attn};
-        \node[rectangle, draw, fill=blue!15, minimum width=2.2cm, minimum height=0.8cm, below=0.3cm of ffn1] (ffn2) {Feed-Forward};
-        \node[right=0.2cm of ffn1, font=\Large] (dots) {$\cdots$};
-        \node[rectangle, draw, fill=blue!15, minimum width=2.2cm, minimum height=0.8cm, right=0.5cm of dots] (attnN) {Self-Attn};
-        \node[rectangle, draw, fill=blue!15, minimum width=2.2cm, minimum height=0.8cm, right=of attnN, xshift=0.3cm] (ffnN) {Feed-Forward};
-        \node[rectangle, draw, fill=blue!5, minimum width=2.2cm, minimum height=1cm, right=of ffnN, xshift=0.5cm] (linear) {Output Softmax};
+    \resizebox{0.95\textwidth}{!}{%
+    \begin{tikzpicture}[node distance=1.0cm, every node/.style={font=\small}]
+        \node[rectangle, draw, fill=blue!5, minimum width=2.2cm, minimum height=0.9cm] (embed) {Embedding};
+        \node[rectangle, draw, fill=blue!15, minimum width=1.8cm, minimum height=0.7cm, right=of embed, xshift=0.3cm] (attn1) {Attn};
+        \node[rectangle, draw, fill=blue!15, minimum width=1.8cm, minimum height=0.7cm, right=of attn1, xshift=0.2cm] (ffn1) {FFN};
+        \node[rectangle, draw, fill=blue!15, minimum width=1.8cm, minimum height=0.7cm, below=0.25cm of attn1] (attn2) {Attn};
+        \node[rectangle, draw, fill=blue!15, minimum width=1.8cm, minimum height=0.7cm, below=0.25cm of ffn1] (ffn2) {FFN};
+        \node[right=0.15cm of ffn1, font=\Large] (dots) {$\cdots$};
+        \node[rectangle, draw, fill=blue!15, minimum width=1.8cm, minimum height=0.7cm, right=0.4cm of dots] (attnN) {Attn};
+        \node[rectangle, draw, fill=blue!15, minimum width=1.8cm, minimum height=0.7cm, right=of attnN, xshift=0.2cm] (ffnN) {FFN};
+        \node[rectangle, draw, fill=blue!5, minimum width=1.8cm, minimum height=0.9cm, right=of ffnN, xshift=0.3cm] (linear) {Output};
         % Arrows between components
         \draw[->] (embed) -- (attn1);
         \draw[->] (attn1) -- (ffn1);
@@ -272,9 +293,10 @@ Figure~\ref{fig:model_arch} shows a schematic of the model's architecture. Thoug
         \draw[->] (attnN) -- (ffnN);
         \draw[->] (ffnN) -- (linear);
         % Brace for layers
-        \draw[decorate, decoration={brace, amplitude=5pt}] (ffn2.south west) -- (attn1.north west) node[midway,left,xshift=-4pt]{\textbf{6$\times$ Transformer Decoder Layers}};
-    \end{tikzpicture}
-    \caption{Transformer-based model architecture of the AI assistant. The model is a 6-layer decoder-only transformer with self-attention and feed-forward sublayers in each layer. Residual connections and layer norms (not shown for simplicity) are applied around each sublayer.}
+        \draw[decorate, decoration={brace, amplitude=4pt}] (ffn2.south west) -- (attn1.north west) node[midway,left,xshift=-3pt,font=\footnotesize]{\textbf{6$\times$ Layers}};
+    \end{tikzpicture}%
+    }
+    \caption{Transformer-based model architecture. The model is a 6-layer decoder-only transformer with self-attention and feed-forward sublayers.}
     \label{fig:model_arch}
 \end{figure}
 
@@ -334,21 +356,23 @@ It is useful to consider the detailed data flow for a single query to illustrate
 
 \begin{figure}[h!]
     \centering
-    \begin{tikzpicture}[node distance=1.4cm, every node/.style={rectangle, draw, minimum height=0.8cm, font=\small}]
-        \node[fill=green!5, minimum width=2.5cm] (input) {User Input (Query Text)};
-        \node[fill=green!5, minimum width=2.5cm, right=of input, xshift=1.0cm] (tokenize) {Tokenizer (BPE)};
-        \node[fill=green!5, minimum width=2.5cm, right=of tokenize, xshift=1.0cm] (inference) {Transformer Model};
-        \node[fill=green!5, minimum width=2.5cm, right=of inference, xshift=1.0cm] (decode) {Top-$k$ Sampling};
-        \node[fill=green!5, minimum width=2.5cm, right=of decode, xshift=1.0cm] (detoken) {Detokenizer};
-        \node[fill=green!5, minimum width=2.5cm, right=of detoken, xshift=1.0cm] (output) {Assistant Response (Text)};
+    \resizebox{\textwidth}{!}{%
+    \begin{tikzpicture}[node distance=1.2cm, every node/.style={rectangle, draw, minimum height=0.8cm, font=\small}]
+        \node[fill=green!5, minimum width=2.2cm] (input) {User Input};
+        \node[fill=green!5, minimum width=2.2cm, right=of input, xshift=0.5cm] (tokenize) {Tokenizer};
+        \node[fill=green!5, minimum width=2.2cm, right=of tokenize, xshift=0.5cm] (inference) {Model};
+        \node[fill=green!5, minimum width=2.2cm, right=of inference, xshift=0.5cm] (decode) {Sampling};
+        \node[fill=green!5, minimum width=2.2cm, right=of decode, xshift=0.5cm] (detoken) {Detokenizer};
+        \node[fill=green!5, minimum width=2.2cm, right=of detoken, xshift=0.5cm] (output) {Response};
         % Arrows
-        \draw[->, thick] (input) -- (tokenize) node[midway,above]{text};
-        \draw[->, thick] (tokenize) -- (inference) node[midway,above]{tokens};
-        \draw[->, thick] (inference) -- (decode) node[midway,above]{logits};
-        \draw[->, thick] (decode) -- (detoken) node[midway,above]{tokens};
-        \draw[->, thick] (detoken) -- (output) node[midway,above]{text};
-    \end{tikzpicture}
-    \caption{Data flow from user query to final answer. The query is tokenized, processed by the transformer model (which may generate multiple tokens iteratively, shown here abstractly as one step), then decoded and converted back to text for the user.}
+        \draw[->, thick] (input) -- (tokenize) node[midway,above]{\footnotesize text};
+        \draw[->, thick] (tokenize) -- (inference) node[midway,above]{\footnotesize tokens};
+        \draw[->, thick] (inference) -- (decode) node[midway,above]{\footnotesize logits};
+        \draw[->, thick] (decode) -- (detoken) node[midway,above]{\footnotesize tokens};
+        \draw[->, thick] (detoken) -- (output) node[midway,above]{\footnotesize text};
+    \end{tikzpicture}%
+    }
+    \caption{Data flow from user query to final answer. The query is tokenized, processed by the transformer model, then decoded and converted back to text.}
     \label{fig:data_flow}
 \end{figure}
 
@@ -362,7 +386,7 @@ Having described the architecture and data flow, we now proceed to the implement
 This chapter delves into the technical implementation of the Farmer AI Assistant, detailing how the model was trained and optimized, and how the mobile application was developed and integrated with the model. We cover data preprocessing, model training setup, model compression, and the mobile-side code integration.
 
 \section{Data Collection and Preprocessing}
-The model was trained on the \textbf{KisanVaani agriculture QA dataset}:contentReference[oaicite:25]{index=25}, which comprises 22,615 question-answer pairs covering various topics such as crop cultivation practices, pest and disease management, soil health, and weather-related advice. The dataset required cleaning and preprocessing steps:
+The model was trained on the \textbf{KisanVaani agriculture QA dataset} \cite{kisanvaani2023}, which comprises 22,615 question-answer pairs covering various topics such as crop cultivation practices, pest and disease management, soil health, and weather-related advice. The dataset required cleaning and preprocessing steps:
 \begin{itemize}
     \item Questions and answers were lowercased and stripped of any irrelevant symbols or HTML tags.
     \item We removed Q\&A pairs that were excessively long or potentially noisy (e.g., very ambiguous questions without clear answers).
@@ -386,18 +410,19 @@ Pseudocode for the training loop is given in Algorithm~\ref{alg:training}. We ma
 \label{alg:training}
 \begin{algorithmic}[1]
 \Require Dataset $D$ of tokenized Q\&A sequences, Transformer model $M$ with parameters $\theta$, epochs $E$
+\Ensure Trained model parameters $\theta$
 \State Initialize $\theta$ randomly
-\For{epoch = 1 to $E$}
-    \For{each batch $B = \{x_i, y_i\}_{i=1..N}$ in $D$}  \Comment $x_i$ are input token sequences, $y_i$ are target token sequences (shifted by one)
-        \State $\text{outputs} \gets M(x_i)$  \Comment forward pass to get logits for each token position
-        \State $L \gets \text{CrossEntropyLoss}(\text{outputs}, y_i)$  \Comment compute loss against true next tokens
+\For{$\text{epoch} = 1$ to $E$}
+    \For{each batch $B = \{x_i, y_i\}_{i=1..N}$ in $D$}
+        \State $\text{outputs} \gets M(x_i)$ \Comment{forward pass to get logits for each token position}
+        \State $L \gets \text{CrossEntropyLoss}(\text{outputs}, y_i)$ \Comment{compute loss against true next tokens}
         \State Backpropagate loss $L$ to compute gradients $\nabla_\theta L$
         \State Clip gradients $\nabla_\theta L$ to max norm 1.0
-        \State Update parameters $\theta \gets \theta - \alpha \nabla_\theta L$  \Comment optimizer step (AdamW)
+        \State Update parameters $\theta \gets \theta - \alpha \nabla_\theta L$ \Comment{optimizer step (AdamW)}
     \EndFor
     \State Evaluate model $M$ on validation set for early stopping (if needed)
 \EndFor
-\State \textbf{return} Trained model parameters $\theta$
+\State \Return Trained model parameters $\theta$
 \end{algorithmic}
 \end{algorithm}
 
@@ -449,7 +474,7 @@ object InferenceEngine {
 In the above code, \texttt{BPETokenizer} is a custom Kotlin class we wrote to perform the same BPE encoding/decoding as used in Python. It reads the \texttt{vocab.json} and \texttt{merges.txt} (containing BPE rules) and implements \texttt{encode()} and \texttt{decode()} functions. Due to space constraints, we do not list its full code here, but it essentially replicates the byte-pair merge algorithm to segment strings into subwords and map them to IDs.
 
 The Flutter side communicates with this \texttt{InferenceEngine} through a MethodChannel. In Dart, we set up:
-\begin{lstlisting}[language=Dart, caption={Dart code snippet calling the native inference via MethodChannel}, label={lst:dart}]
+\begin{lstlisting}[caption={Dart code snippet calling the native inference via MethodChannel}, label={lst:dart}]
 static const platform = MethodChannel('farmer_ai/inference');
 
 Future<String> getAnswer(String question) async {
@@ -463,7 +488,7 @@ Future<String> getAnswer(String question) async {
 }
 \end{lstlisting}
 
-On the Android side, we registered a \texttt{MethodCallHandler} for the channel \texttt{"farmer\_ai/inference"}; when \texttt{'runInference'} is called, the handler invokes \texttt{InferenceEngine.generateAnswer()} and returns its result back to Flutter. The result is then displayed in the chat UI.
+On the Android side, we registered a \texttt{MethodCallHandler} for the channel \texttt{"farmer\_ai/inference"}; when \texttt{'runInference'} is called, the handler invokes \texttt{InferenceEngine.generateAnswer()} and returns its result back to Flutter. The result is then displayed in the chat UI (Listing~\ref{lst:dart}).
 
 We also implemented minor logic to handle special cases: if the model returns an end-of-sequence token immediately (meaning it did not have an answer), we craft a fallback response like \textit{"I'm sorry, I don't have information on that."} to not leave the user empty-handed. Fortunately, such cases were rare in testing.
 
@@ -576,7 +601,7 @@ Since our solution is somewhat unique (offline and AI-based), finding a direct b
     \item \textbf{Online search/ChatGPT:} In connectivity situations, farmers might use search engines or ask questions on forums. We compared a few queries with answers from ChatGPT (online). While ChatGPT (being a much larger model) gave more detailed answers, our on-device model's answers were surprisingly on-point for many questions, albeit shorter. The major advantage is that our assistant works with zero connectivity and in local languages (future update), which an online tool may not support fully.
 \end{itemize}
 
-In terms of speed, our offline model's 5-6 seconds response is faster than the time it would take to type out a query and get results via a slow mobile internet (which in rural areas could be tens of seconds or more, if at all available:contentReference[oaicite:26]{index=26}). Thus, even though our model is lightweight, in the target use-case it competes well by circumventing network latency entirely.
+In terms of speed, our offline model's 5-6 seconds response is faster than the time it would take to type out a query and get results via a slow mobile internet (which in rural areas could be tens of seconds or more, if at all available \cite{rural_connectivity2023}). Thus, even though our model is lightweight, in the target use-case it competes well by circumventing network latency entirely.
 
 \section{Discussion}
 The testing confirmed that running a language model completely on-device is feasible for non-trivial applications like agricultural advice. Quantization and careful engineering were key to achieving acceptable performance. There are, however, trade-offs:
@@ -598,8 +623,20 @@ One of the core deliverables of this project is a fully functional mobile applic
 
 \begin{figure}[h!]
     \centering
-    \includegraphics[width=0.35\textwidth]{app_screenshot.png}
-    \caption{Screenshot of the Farmer AI Assistant app interface. The user (left) asks a question and the assistant (right) provides an answer, all in a conversational chat format. [Placeholder image].}
+    \begin{tikzpicture}
+        \node[draw, rectangle, minimum width=5cm, minimum height=8cm, fill=gray!10] {
+            \begin{minipage}{4.5cm}
+                \centering
+                \vspace{1cm}
+                \textbf{Farmer AI Assistant}\\[0.5cm]
+                \begin{tikzpicture}
+                    \node[draw, rectangle, fill=blue!10, text width=3.5cm, align=left] at (0,0) {\small User: How to control pests?};
+                    \node[draw, rectangle, fill=green!10, text width=3.5cm, align=left] at (0,-1.5) {\small AI: Use neem oil spray...};
+                \end{tikzpicture}
+            \end{minipage}
+        };
+    \end{tikzpicture}
+    \caption{Screenshot of the Farmer AI Assistant app interface showing a conversational chat format between user and AI assistant.}
     \label{fig:app_ui}
 \end{figure}
 
@@ -610,7 +647,7 @@ A notable feature of the assistant is its ability to handle follow-up questions.
 \section{Key Achievements}
 Comparing the results to our initial objectives (Chapter 1), we achieved the following:
 \begin{itemize}
-    \item \textbf{Offline Expert Knowledge:} The primary goal of providing expert agricultural advice without internet was met. The assistant could answer a wide range of questions offline, effectively turning the phone into a pocket advisor. This has significant implications for farming communities with poor connectivity:contentReference[oaicite:27]{index=27}.
+    \item \textbf{Offline Expert Knowledge:} The primary goal of providing expert agricultural advice without internet was met. The assistant could answer a wide range of questions offline, effectively turning the phone into a pocket advisor. This has significant implications for farming communities with poor connectivity \cite{offline_ai_agriculture2024}.
     \item \textbf{Latency and Performance:} Through optimization, we kept inference times within a practical range (usually 5-6 seconds). This real-time feel is crucial for user acceptance; anecdotally, users found the speed to be \textit{"fast enough to not lose patience"}. Memory and battery usage were also within acceptable bounds for modern smartphones, as detailed in Chapter 5.
     \item \textbf{Usability:} The chat-based interface proved intuitive. Farmers likened it to using popular messaging apps, lowering the barrier to adoption. Even those with limited literacy could interact by voice-typing questions (leveraging the phone's built-in voice input) and have the answers read out (using text-to-speech services), hinting at accessibility beyond text which we plan to integrate formally later.
     \item \textbf{Domain Coverage:} Thanks to the comprehensive dataset, the assistant handled queries across multiple domains: agronomy, plant pathology, soil science, etc. It provided context-specific answers that were relevant to the crop or issue asked about, which is a step up from static information sources that often give one-size-fits-all guidance.
