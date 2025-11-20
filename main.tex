@@ -43,8 +43,9 @@
 % Title Page
 \begin{titlepage}
     \begin{center}
+        \vspace*{-1cm}
         % NIT Rourkela Logo
-        \begin{tikzpicture}[scale=0.8]
+        \begin{tikzpicture}[scale=0.6]
             % Outer circle
             \draw[line width=2pt, blue!70!black] (0,0) circle (2.5cm);
             % Inner circle
@@ -63,28 +64,35 @@
             \node[font=\small\bfseries, blue!70!black] at (0,2.4) {OF TECHNOLOGY};
             % Bottom text
             \node[font=\footnotesize\bfseries, blue!70!black] at (0,-2.6) {ROURKELA};
-        \end{tikzpicture}\\[1em]
-        \textsc{\Large National Institute of Technology Rourkela}\\[1em]
-        \textsc{\large Department of Electronics and Communication \& Engineering}\\[2em]
-        \textbf{\LARGE Farmer AI Assistant - Offline Mobile Agriculture Advisor}\\[2em]
-        \textit{Project Report}\\[1em]
-        \textbf{Course Code: XYZ \\ Course Name: Project Development}\\[2em]
-        \textbf{Team Members:}\\[1em]
-        Joy Bag \hfill (Roll No. XX1234XX)\\
-        Debansh Biswal \hfill (Roll No. XX1234XX)\\
-        Mohit Naik \hfill (Roll No. XX1234XX)\\
-        Uday \hfill (Roll No. XX1234XX)\\
-        Ayush Samal \hfill (Roll No. XX1234XX)\\[2em]
-        \textbf{Data Collection \& Management Team:}\\[1em]
-        Om Prakash \hfill (Roll No. XX1234XX)\\
-        Viraj Ghodki \hfill (Roll No. XX1234XX)\\
-        Armaan \hfill (Roll No. XX1234XX)\\
-        Ayush Mohanty \hfill (Roll No. XX1234XX)\\[2em]
-        \textbf{Documentation \& Presentation Team:}\\[1em]
-        Meer \hfill (Roll No. XX1234XX)\\
-        Aditya Singh \hfill (Roll No. XX1234XX)\\
-        Aditya Nayak \hfill (Roll No. XX1234XX)\\[3em]
-        \textbf{Guide:} Dr. Sobhan Kanti Dhara, Department of CSE, NIT Rourkela\\[6em]
+        \end{tikzpicture}\\[0.5em]
+        \textsc{\Large National Institute of Technology Rourkela}\\[0.5em]
+        \textsc{\large Department of Electronics and Communication \& Engineering}\\[1.5em]
+        \textbf{\LARGE Farmer AI Assistant - Offline Mobile Agriculture Advisor}\\[1em]
+        \textit{Project Report}\\[0.5em]
+        \textbf{Course Code: XYZ \\ Course Name: Project Development}\\[1.5em]
+
+        \begin{minipage}{0.9\textwidth}
+        \centering
+        \textbf{Team Members:}\\[0.5em]
+        {\small
+        Joy Bag (XX1234XX), Debansh Biswal (XX1234XX), Mohit Naik (XX1234XX),\\
+        Uday (XX1234XX), Ayush Samal (XX1234XX)
+        }\\[1em]
+
+        \textbf{Data Collection \& Management Team:}\\[0.5em]
+        {\small
+        Om Prakash (XX1234XX), Viraj Ghodki (XX1234XX),\\
+        Armaan (XX1234XX), Ayush Mohanty (XX1234XX)
+        }\\[1em]
+
+        \textbf{Documentation \& Presentation Team:}\\[0.5em]
+        {\small
+        Meer (XX1234XX), Aditya Singh (XX1234XX), Aditya Nayak (XX1234XX)
+        }
+        \end{minipage}
+
+        \vfill
+        \textbf{Guide:} Dr. Sobhan Kanti Dhara, Department of CSE, NIT Rourkela\\[1em]
         \textbf{2025}
     \end{center}
 \end{titlepage}
@@ -391,7 +399,7 @@ The model was trained on the \textbf{KisanVaani agriculture QA dataset} \cite{ki
     \item Questions and answers were lowercased and stripped of any irrelevant symbols or HTML tags.
     \item We removed Q\&A pairs that were excessively long or potentially noisy (e.g., very ambiguous questions without clear answers).
     \item Domain-specific terms (names of local pests, crop varieties, etc.) were retained in their original form to preserve context.
-    \item A custom tokenizer based on GPT-2's Byte Pair Encoding (BPE) was trained on the corpus. We used the open-source \textit{SentencePiece} implementation to generate a 50,000 token vocabulary which includes subword units for handling out-of-vocabulary words. This tokenizer is saved as \texttt{vocab.json} and \texttt{merges.txt} (for BPE merge rules) and is embedded in the app.
+    \item A custom tokenizer based on GPT-2's Byte Pair Encoding (BPE) was used for the corpus. The GPT-2 tokenizer with its standard vocabulary of 50,257 tokens handles subword units for out-of-vocabulary words. The tokenizer files \texttt{vocab.json} (1 MB) and \texttt{merges.txt} (446 KB with BPE merge rules) are embedded in the app assets.
 \end{itemize}
 
 The final preprocessed corpus was formatted into a plain text where each question-answer pair was concatenated with special tokens. For instance:
@@ -439,7 +447,7 @@ Deploying the model on mobile required conversion and optimization steps. Using 
 The quantized TorchScript model (\texttt{model.pt}) along with the tokenizer files were then packaged into the Android app's assets. Memory-wise, when loaded, the model uses around 150--200 MB of RAM, which is acceptable for mid-tier phones (with 4 GB or more of RAM). We chose dynamic quantization (which only quantizes weights and computes activations in 32-bit) to avoid any accuracy loss in non-linear layers. More aggressive quantization (like full integer quantization) could further reduce size but would require more complex calibration.
 
 \section{Mobile App Integration}
-On the Android side, we integrated the PyTorch model using the \textit{PyTorch Android SDK}. In the app's native Kotlin code, the quantized TorchScript model (\texttt{farmer\_model\_torchscript.pt}, 104 MB) is loaded during the \texttt{ModelInference} class initialization using \texttt{Module.load()}. The model file is extracted from Flutter assets and cached to the app's internal storage for faster subsequent loads. The tokenizer files (\texttt{vocab.json} with 50,000 tokens and \texttt{merges.txt} with BPE rules) are loaded by the \texttt{BPETokenizer} class, which implements the same tokenization used during model training.
+On the Android side, we integrated the PyTorch model using the \textit{PyTorch Android SDK}. In the app's native Kotlin code, the quantized TorchScript model (\texttt{farmer\_model\_torchscript.pt}, 104 MB) is loaded during the \texttt{ModelInference} class initialization using \texttt{Module.load()}. The model file is extracted from Flutter assets and cached to the app's internal storage for faster subsequent loads. The tokenizer files (\texttt{vocab.json} with 50,257 tokens, 1 MB and \texttt{merges.txt} with BPE rules, 446 KB) are loaded by the \texttt{BPETokenizer} class, which implements the same tokenization used during model training.
 
 Below is a snippet of the Kotlin code responsible for loading the model and performing inference when a query is received (Listing~\ref{lst:inference}). The \texttt{ModelInference} class encapsulates the PyTorch \texttt{Module} and tokenizer, exposing a method \texttt{generateAnswer()} that implements auto-regressive text generation.
 
