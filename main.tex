@@ -266,9 +266,10 @@ Key components of the model:
     \[
         \text{Attention}(Q, K, V) = \text{softmax}\left(\frac{Q K^T}{\sqrt{d}}\right) V,
     \]
-    where $Q, K, V$ are the query, key, and value matrices derived from the hidden state, and $d$ is the dimensionality of the head \cite{vaswani2017attention}. This mechanism enables the model to attend to previous words in the input (up to a context length limit) and capture long-range dependencies.
+    where $Q, K, V$ are the query, key, and value matrices derived from the hidden state, and $d$ is the dimensionality of the head \cite{vaswani2017attention}. This mechanism enables the model to attend to previous words in the input (up to a context length limit of 128 tokens) and capture long-range dependencies.
     \item \textbf{Feed-Forward Network:} After attention, each layer has a position-wise feed-forward network (two linear transformations with a GeLU activation in between). This expands and then contracts the dimensionality (e.g., from 384 to a higher intermediate dimension and back) to allow complex transformations of the information.
     \item \textbf{Residual Connections and Layer Normalization:} The model uses residual skip-connections around the attention and feed-forward sublayers, with layer normalization to stabilize training. These are standard components in transformer architectures that help deeper models converge.
+    \item \textbf{Dropout Regularization:} We apply dropout with rate 0.1 to the attention weights and after the feed-forward layers during training to prevent overfitting and improve model generalization.
     \item \textbf{Output Layer:} The final layer outputs a probability distribution over the vocabulary for the next token. Specifically, if $h_t$ is the hidden state at position $t$, the model computes logits $z = W_o h_t$ where $W_o$ is the output weight matrix of size (vocab, 384). Applying softmax gives $P(w \mid \text{context}) = \text{softmax}(z)$. The highest probability token can be selected as the output (or a sampling strategy can be used for more varied responses).
 \end{itemize}
 
@@ -409,26 +410,37 @@ The final preprocessed corpus was formatted into a plain text where each questio
 This formatting allowed the model to learn when a question ends and an answer begins. We used <|sep|> and <|endoftext|> as delimiters during training.
 
 \section{Model Training Procedure}
-We implemented the model using PyTorch \cite{pytorch2019}. The training objective was to minimize the causal language modeling loss as described in Chapter 3. We used the AdamW optimizer with an initial learning rate of $5\times10^{-4}$, and a linear learning rate decay schedule. The training was conducted on an NVIDIA GPU (Tesla V100) for efficiency. Batch size was set to 32 sequences (each sequence containing a concatenated question and answer). We trained for 3 epochs over the dataset, which was sufficient to reach convergence given the repetitive nature of Q\&A pairs.
+We implemented the model using PyTorch \cite{pytorch2019}. The training objective was to minimize the causal language modeling loss as described in Chapter 3. We used the AdamW optimizer with hyperparameters $\beta_1=0.9$, $\beta_2=0.95$, and weight decay of 0.1. The initial learning rate was set to $1\times10^{-4}$ with a linear warmup of 1,000 steps, followed by cosine annealing decay to a minimum learning rate of $5\times10^{-4}$.
 
-Pseudocode for the training loop is given in Algorithm~\ref{alg:training}. We made use of gradient clipping (at a max norm of 1.0) to stabilize training, and periodically evaluated the loss on a validation split (10\% of the data) to ensure the model was not overfitting. Training took approximately 4 hours on the GPU.
+The training was conducted on an NVIDIA GPU using mixed precision (bfloat16) for efficiency. Batch size was set to 32 sequences (each sequence containing a concatenated question and answer), with gradient accumulation over 32 steps for an effective batch size of 1,024. The dataset was split into 20,353 training samples (90\%) and 2,262 validation samples (10\%). We trained for 20,000 iterations total, evaluating on the validation set every 500 iterations.
+
+Pseudocode for the training loop is given in Algorithm~\ref{alg:training}. We made use of gradient clipping (at a max norm of 0.5) to stabilize training, and dropout (rate 0.1) for regularization. The training converged smoothly with final training loss of approximately 0.30 and validation loss of 0.41, indicating effective learning without significant overfitting.
 
 \begin{algorithm}[h]
 \caption{Model Training Loop (simplified)}
 \label{alg:training}
 \begin{algorithmic}[1]
-\Require Dataset $D$ of tokenized Q\&A sequences, Transformer model $M$ with parameters $\theta$, epochs $E$
+\Require Dataset $D$ of tokenized Q\&A sequences, Transformer model $M$ with parameters $\theta$, total iterations $T=20000$
 \Ensure Trained model parameters $\theta$
-\State Initialize $\theta$ randomly
-\For{$\text{epoch} = 1$ to $E$}
-    \For{each batch $B = \{x_i, y_i\}_{i=1..N}$ in $D$}
-        \State $\text{outputs} \gets M(x_i)$ \Comment{forward pass to get logits for each token position}
-        \State $L \gets \text{CrossEntropyLoss}(\text{outputs}, y_i)$ \Comment{compute loss against true next tokens}
-        \State Backpropagate loss $L$ to compute gradients $\nabla_\theta L$
-        \State Clip gradients $\nabla_\theta L$ to max norm 1.0
-        \State Update parameters $\theta \gets \theta - \alpha \nabla_\theta L$ \Comment{optimizer step (AdamW)}
+\State Initialize $\theta$ randomly, learning rate $\alpha=1\times10^{-4}$
+\State $\text{accumulation\_steps} \gets 32$, $\text{warmup\_steps} \gets 1000$
+\For{$t = 1$ to $T$}
+    \For{$k = 1$ to $\text{accumulation\_steps}$}
+        \State Sample batch $B = \{x_i, y_i\}$ from $D$
+        \State $\text{outputs} \gets M(x_i)$ \Comment{forward pass with dropout=0.1}
+        \State $L \gets \frac{1}{\text{accumulation\_steps}} \cdot \text{CrossEntropyLoss}(\text{outputs}, y_i)$
+        \State Backpropagate $L$ to accumulate gradients $\nabla_\theta L$
     \EndFor
-    \State Evaluate model $M$ on validation set for early stopping (if needed)
+    \State Clip gradients $\nabla_\theta L$ to max norm 0.5
+    \If{$t \leq \text{warmup\_steps}$}
+        \State $\alpha \gets \alpha_0 \cdot \frac{t}{\text{warmup\_steps}}$ \Comment{linear warmup}
+    \Else
+        \State $\alpha \gets \alpha_{\min} + \frac{1}{2}(\alpha_0 - \alpha_{\min})(1 + \cos(\pi \frac{t-\text{warmup\_steps}}{T-\text{warmup\_steps}}))$ \Comment{cosine decay}
+    \EndIf
+    \State Update parameters $\theta$ using AdamW with learning rate $\alpha$
+    \If{$t \mod 500 = 0$}
+        \State Evaluate model $M$ on validation set
+    \EndIf
 \EndFor
 \State \Return Trained model parameters $\theta$
 \end{algorithmic}
@@ -441,7 +453,7 @@ Deploying the model on mobile required conversion and optimization steps. Using 
 \begin{enumerate}
     \item We wrote a script to trace the model with an example input (dummy question tokens) using \texttt{torch.jit.trace}, obtaining a \texttt{ScriptModule} representation of the model.
     \item This \texttt{ScriptModule} was then optimized with \texttt{torch.utils.mobile\_optimizer} (applying graph simplifications suitable for mobile) and saved as \texttt{model.pt}.
-    \item We applied \textbf{dynamic quantization} to the model's linear layers (both the self-attention matrices and feed-forward layers) to reduce their weight precision from 32-bit floats to 8-bit integers. This brought the model file size down from about 220~MB to 104~MB, a reduction of over 50\%. The quantization was done post-training and is supported by PyTorch's quantization API. We verified that the quantized model's outputs on sample inputs matched the full model's outputs closely (differences only in the least significant bits).
+    \item We applied \textbf{dynamic quantization} to the model's linear layers (both the self-attention matrices and feed-forward layers) to reduce their weight precision from 32-bit floats to 8-bit integers. This brought the model file size down from approximately 120~MB (unquantized) to 104~MB, a reduction of about 13\%. The quantization was done post-training and is supported by PyTorch's quantization API. We verified that the quantized model's outputs on sample inputs matched the full model's outputs closely (differences only in the least significant bits).
 \end{enumerate}
 
 The quantized TorchScript model (\texttt{model.pt}) along with the tokenizer files were then packaged into the Android app's assets. Memory-wise, when loaded, the model uses around 150--200 MB of RAM, which is acceptable for mid-tier phones (with 4 GB or more of RAM). We chose dynamic quantization (which only quantizes weights and computes activations in 32-bit) to avoid any accuracy loss in non-linear layers. More aggressive quantization (like full integer quantization) could further reduce size but would require more complex calibration.
