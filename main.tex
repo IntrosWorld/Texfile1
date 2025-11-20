@@ -43,8 +43,9 @@
 % Title Page
 \begin{titlepage}
     \begin{center}
+        \vspace*{-1cm}
         % NIT Rourkela Logo
-        \begin{tikzpicture}[scale=0.8]
+        \begin{tikzpicture}[scale=0.6]
             % Outer circle
             \draw[line width=2pt, blue!70!black] (0,0) circle (2.5cm);
             % Inner circle
@@ -63,28 +64,35 @@
             \node[font=\small\bfseries, blue!70!black] at (0,2.4) {OF TECHNOLOGY};
             % Bottom text
             \node[font=\footnotesize\bfseries, blue!70!black] at (0,-2.6) {ROURKELA};
-        \end{tikzpicture}\\[1em]
-        \textsc{\Large National Institute of Technology Rourkela}\\[1em]
-        \textsc{\large Department of Electronics and Communication \& Engineering}\\[2em]
-        \textbf{\LARGE Farmer AI Assistant - Offline Mobile Agriculture Advisor}\\[2em]
-        \textit{Project Report}\\[1em]
-        \textbf{Course Code: XYZ \\ Course Name: Project Development}\\[2em]
-        \textbf{Team Members:}\\[1em]
-        Joy Bag \hfill (Roll No. XX1234XX)\\
-        Debansh Biswal \hfill (Roll No. XX1234XX)\\
-        Mohit Naik \hfill (Roll No. XX1234XX)\\
-        Uday \hfill (Roll No. XX1234XX)\\
-        Ayush Samal \hfill (Roll No. XX1234XX)\\[2em]
-        \textbf{Data Collection \& Management Team:}\\[1em]
-        Om Prakash \hfill (Roll No. XX1234XX)\\
-        Viraj Ghodki \hfill (Roll No. XX1234XX)\\
-        Armaan \hfill (Roll No. XX1234XX)\\
-        Ayush Mohanty \hfill (Roll No. XX1234XX)\\[2em]
-        \textbf{Documentation \& Presentation Team:}\\[1em]
-        Meer \hfill (Roll No. XX1234XX)\\
-        Aditya Singh \hfill (Roll No. XX1234XX)\\
-        Aditya Nayak \hfill (Roll No. XX1234XX)\\[3em]
-        \textbf{Guide:} Dr. Sobhan Kanti Dhara, Department of CSE, NIT Rourkela\\[6em]
+        \end{tikzpicture}\\[0.5em]
+        \textsc{\Large National Institute of Technology Rourkela}\\[0.5em]
+        \textsc{\large Department of Electronics and Communication \& Engineering}\\[1.5em]
+        \textbf{\LARGE Farmer AI Assistant - Offline Mobile Agriculture Advisor}\\[1em]
+        \textit{Project Report}\\[0.5em]
+        \textbf{Course Code: XYZ \\ Course Name: Project Development}\\[1.5em]
+
+        \begin{minipage}{0.9\textwidth}
+        \centering
+        \textbf{Team Members:}\\[0.5em]
+        {\small
+        Joy Bag (XX1234XX), Debansh Biswal (XX1234XX), Mohit Naik (XX1234XX),\\
+        Uday (XX1234XX), Ayush Samal (XX1234XX)
+        }\\[1em]
+
+        \textbf{Data Collection \& Management Team:}\\[0.5em]
+        {\small
+        Om Prakash (XX1234XX), Viraj Ghodki (XX1234XX),\\
+        Armaan (XX1234XX), Ayush Mohanty (XX1234XX)
+        }\\[1em]
+
+        \textbf{Documentation \& Presentation Team:}\\[0.5em]
+        {\small
+        Meer (XX1234XX), Aditya Singh (XX1234XX), Aditya Nayak (XX1234XX)
+        }
+        \end{minipage}
+
+        \vfill
+        \textbf{Guide:} Dr. Sobhan Kanti Dhara, Department of CSE, NIT Rourkela\\[1em]
         \textbf{2025}
     \end{center}
 \end{titlepage}
@@ -258,9 +266,10 @@ Key components of the model:
     \[
         \text{Attention}(Q, K, V) = \text{softmax}\left(\frac{Q K^T}{\sqrt{d}}\right) V,
     \]
-    where $Q, K, V$ are the query, key, and value matrices derived from the hidden state, and $d$ is the dimensionality of the head \cite{vaswani2017attention}. This mechanism enables the model to attend to previous words in the input (up to a context length limit) and capture long-range dependencies.
+    where $Q, K, V$ are the query, key, and value matrices derived from the hidden state, and $d$ is the dimensionality of the head \cite{vaswani2017attention}. This mechanism enables the model to attend to previous words in the input (up to a context length limit of 128 tokens) and capture long-range dependencies.
     \item \textbf{Feed-Forward Network:} After attention, each layer has a position-wise feed-forward network (two linear transformations with a GeLU activation in between). This expands and then contracts the dimensionality (e.g., from 384 to a higher intermediate dimension and back) to allow complex transformations of the information.
     \item \textbf{Residual Connections and Layer Normalization:} The model uses residual skip-connections around the attention and feed-forward sublayers, with layer normalization to stabilize training. These are standard components in transformer architectures that help deeper models converge.
+    \item \textbf{Dropout Regularization:} We apply dropout with rate 0.1 to the attention weights and after the feed-forward layers during training to prevent overfitting and improve model generalization.
     \item \textbf{Output Layer:} The final layer outputs a probability distribution over the vocabulary for the next token. Specifically, if $h_t$ is the hidden state at position $t$, the model computes logits $z = W_o h_t$ where $W_o$ is the output weight matrix of size (vocab, 384). Applying softmax gives $P(w \mid \text{context}) = \text{softmax}(z)$. The highest probability token can be selected as the output (or a sampling strategy can be used for more varied responses).
 \end{itemize}
 
@@ -391,7 +400,7 @@ The model was trained on the \textbf{KisanVaani agriculture QA dataset} \cite{ki
     \item Questions and answers were lowercased and stripped of any irrelevant symbols or HTML tags.
     \item We removed Q\&A pairs that were excessively long or potentially noisy (e.g., very ambiguous questions without clear answers).
     \item Domain-specific terms (names of local pests, crop varieties, etc.) were retained in their original form to preserve context.
-    \item A custom tokenizer based on GPT-2's Byte Pair Encoding (BPE) was trained on the corpus. We used the open-source \textit{SentencePiece} implementation to generate a 50,000 token vocabulary which includes subword units for handling out-of-vocabulary words. This tokenizer is saved as \texttt{vocab.json} and \texttt{merges.txt} (for BPE merge rules) and is embedded in the app.
+    \item A custom tokenizer based on GPT-2's Byte Pair Encoding (BPE) was used for the corpus. The GPT-2 tokenizer with its standard vocabulary of 50,257 tokens handles subword units for out-of-vocabulary words. The tokenizer files \texttt{vocab.json} (1 MB) and \texttt{merges.txt} (446 KB with BPE merge rules) are embedded in the app assets.
 \end{itemize}
 
 The final preprocessed corpus was formatted into a plain text where each question-answer pair was concatenated with special tokens. For instance:
@@ -401,26 +410,37 @@ The final preprocessed corpus was formatted into a plain text where each questio
 This formatting allowed the model to learn when a question ends and an answer begins. We used <|sep|> and <|endoftext|> as delimiters during training.
 
 \section{Model Training Procedure}
-We implemented the model using PyTorch \cite{pytorch2019}. The training objective was to minimize the causal language modeling loss as described in Chapter 3. We used the AdamW optimizer with an initial learning rate of $5\times10^{-4}$, and a linear learning rate decay schedule. The training was conducted on an NVIDIA GPU (Tesla V100) for efficiency. Batch size was set to 32 sequences (each sequence containing a concatenated question and answer). We trained for 3 epochs over the dataset, which was sufficient to reach convergence given the repetitive nature of Q\&A pairs.
+We implemented the model using PyTorch \cite{pytorch2019}. The training objective was to minimize the causal language modeling loss as described in Chapter 3. We used the AdamW optimizer with hyperparameters $\beta_1=0.9$, $\beta_2=0.95$, and weight decay of 0.1. The initial learning rate was set to $1\times10^{-4}$ with a linear warmup of 1,000 steps, followed by cosine annealing decay to a minimum learning rate of $5\times10^{-4}$.
 
-Pseudocode for the training loop is given in Algorithm~\ref{alg:training}. We made use of gradient clipping (at a max norm of 1.0) to stabilize training, and periodically evaluated the loss on a validation split (10\% of the data) to ensure the model was not overfitting. Training took approximately 4 hours on the GPU.
+The training was conducted on an NVIDIA GPU using mixed precision (bfloat16) for efficiency. Batch size was set to 32 sequences (each sequence containing a concatenated question and answer), with gradient accumulation over 32 steps for an effective batch size of 1,024. The dataset was split into 20,353 training samples (90\%) and 2,262 validation samples (10\%). We trained for 20,000 iterations total, evaluating on the validation set every 500 iterations.
+
+Pseudocode for the training loop is given in Algorithm~\ref{alg:training}. We made use of gradient clipping (at a max norm of 0.5) to stabilize training, and dropout (rate 0.1) for regularization. The training converged smoothly with final training loss of approximately 0.30 and validation loss of 0.41, indicating effective learning without significant overfitting.
 
 \begin{algorithm}[h]
 \caption{Model Training Loop (simplified)}
 \label{alg:training}
 \begin{algorithmic}[1]
-\Require Dataset $D$ of tokenized Q\&A sequences, Transformer model $M$ with parameters $\theta$, epochs $E$
+\Require Dataset $D$ of tokenized Q\&A sequences, Transformer model $M$ with parameters $\theta$, total iterations $T=20000$
 \Ensure Trained model parameters $\theta$
-\State Initialize $\theta$ randomly
-\For{$\text{epoch} = 1$ to $E$}
-    \For{each batch $B = \{x_i, y_i\}_{i=1..N}$ in $D$}
-        \State $\text{outputs} \gets M(x_i)$ \Comment{forward pass to get logits for each token position}
-        \State $L \gets \text{CrossEntropyLoss}(\text{outputs}, y_i)$ \Comment{compute loss against true next tokens}
-        \State Backpropagate loss $L$ to compute gradients $\nabla_\theta L$
-        \State Clip gradients $\nabla_\theta L$ to max norm 1.0
-        \State Update parameters $\theta \gets \theta - \alpha \nabla_\theta L$ \Comment{optimizer step (AdamW)}
+\State Initialize $\theta$ randomly, learning rate $\alpha=1\times10^{-4}$
+\State $\text{accumulation\_steps} \gets 32$, $\text{warmup\_steps} \gets 1000$
+\For{$t = 1$ to $T$}
+    \For{$k = 1$ to $\text{accumulation\_steps}$}
+        \State Sample batch $B = \{x_i, y_i\}$ from $D$
+        \State $\text{outputs} \gets M(x_i)$ \Comment{forward pass with dropout=0.1}
+        \State $L \gets \frac{1}{\text{accumulation\_steps}} \cdot \text{CrossEntropyLoss}(\text{outputs}, y_i)$
+        \State Backpropagate $L$ to accumulate gradients $\nabla_\theta L$
     \EndFor
-    \State Evaluate model $M$ on validation set for early stopping (if needed)
+    \State Clip gradients $\nabla_\theta L$ to max norm 0.5
+    \If{$t \leq \text{warmup\_steps}$}
+        \State $\alpha \gets \alpha_0 \cdot \frac{t}{\text{warmup\_steps}}$ \Comment{linear warmup}
+    \Else
+        \State $\alpha \gets \alpha_{\min} + \frac{1}{2}(\alpha_0 - \alpha_{\min})(1 + \cos(\pi \frac{t-\text{warmup\_steps}}{T-\text{warmup\_steps}}))$ \Comment{cosine decay}
+    \EndIf
+    \State Update parameters $\theta$ using AdamW with learning rate $\alpha$
+    \If{$t \mod 500 = 0$}
+        \State Evaluate model $M$ on validation set
+    \EndIf
 \EndFor
 \State \Return Trained model parameters $\theta$
 \end{algorithmic}
@@ -433,64 +453,102 @@ Deploying the model on mobile required conversion and optimization steps. Using 
 \begin{enumerate}
     \item We wrote a script to trace the model with an example input (dummy question tokens) using \texttt{torch.jit.trace}, obtaining a \texttt{ScriptModule} representation of the model.
     \item This \texttt{ScriptModule} was then optimized with \texttt{torch.utils.mobile\_optimizer} (applying graph simplifications suitable for mobile) and saved as \texttt{model.pt}.
-    \item We applied \textbf{dynamic quantization} to the model's linear layers (both the self-attention matrices and feed-forward layers) to reduce their weight precision from 32-bit floats to 8-bit integers. This brought the model file size down from about 220~MB to 104~MB, a reduction of over 50\%. The quantization was done post-training and is supported by PyTorch's quantization API. We verified that the quantized model's outputs on sample inputs matched the full model's outputs closely (differences only in the least significant bits).
+    \item We applied \textbf{dynamic quantization} to the model's linear layers (both the self-attention matrices and feed-forward layers) to reduce their weight precision from 32-bit floats to 8-bit integers. This brought the model file size down from approximately 120~MB (unquantized) to 104~MB, a reduction of about 13\%. The quantization was done post-training and is supported by PyTorch's quantization API. We verified that the quantized model's outputs on sample inputs matched the full model's outputs closely (differences only in the least significant bits).
 \end{enumerate}
 
 The quantized TorchScript model (\texttt{model.pt}) along with the tokenizer files were then packaged into the Android app's assets. Memory-wise, when loaded, the model uses around 150--200 MB of RAM, which is acceptable for mid-tier phones (with 4 GB or more of RAM). We chose dynamic quantization (which only quantizes weights and computes activations in 32-bit) to avoid any accuracy loss in non-linear layers. More aggressive quantization (like full integer quantization) could further reduce size but would require more complex calibration.
 
 \section{Mobile App Integration}
-On the Android side, we integrated the PyTorch model using the \textit{PyTorch Android SDK}. In the app's native Kotlin code, the model is loaded at startup from the assets using \texttt{LiteModuleLoader}. The tokenizer files (vocabulary and merges) are read and used to construct an in-app tokenizer object.
+On the Android side, we integrated the PyTorch model using the \textit{PyTorch Android SDK}. In the app's native Kotlin code, the quantized TorchScript model (\texttt{farmer\_model\_torchscript.pt}, 104 MB) is loaded during the \texttt{ModelInference} class initialization using \texttt{Module.load()}. The model file is extracted from Flutter assets and cached to the app's internal storage for faster subsequent loads. The tokenizer files (\texttt{vocab.json} with 50,257 tokens, 1 MB and \texttt{merges.txt} with BPE rules, 446 KB) are loaded by the \texttt{BPETokenizer} class, which implements the same tokenization used during model training.
 
-Below is a snippet of the Kotlin code responsible for loading the model and performing inference when a query is received (Listing~\ref{lst:inference}). We implemented a singleton \texttt{InferenceEngine} class in Kotlin to hold the \texttt{Module} and tokenizer, and expose a method \texttt{generateAnswer(question: String): String}.
+Below is a snippet of the Kotlin code responsible for loading the model and performing inference when a query is received (Listing~\ref{lst:inference}). The \texttt{ModelInference} class encapsulates the PyTorch \texttt{Module} and tokenizer, exposing a method \texttt{generateAnswer()} that implements auto-regressive text generation.
 
 \begin{lstlisting}[caption={Kotlin code for loading the PyTorch model and running inference}, label={lst:inference}]
-object InferenceEngine {
-    private lateinit var module: Module
-    private lateinit var tokenizer: BPETokenizer
+class ModelInference(context: Context) {
+    private val module: Module
+    private val tokenizer: BPETokenizer
+    private val blockSize = 128  // Maximum context length
 
-    fun init(assetManager: AssetManager) {
+    init {
         // Load the serialized PyTorch model from app assets
-        val modelBytes = assetManager.open("model.pt").readBytes()
-        module = LiteModuleLoader.load(modelBytes)
-        // Load tokenizer (vocab and merges from assets)
-        tokenizer = BPETokenizer(assetManager.open("vocab.json"),
-                                  assetManager.open("merges.txt"))
+        val modelPath = assetFilePath(context,
+            "flutter_assets/assets/farmer_model_torchscript.pt")
+        module = Module.load(modelPath)
+        // Initialize BPE tokenizer
+        tokenizer = BPETokenizer(context)
     }
 
-    fun generateAnswer(question: String): String {
-        // Encode question text to tokens
-        val tokenIds = tokenizer.encode(question)
-        // Prepare input tensor of shape [1, seq_len]
-        val inputTensor = Tensor.fromBlob(tokenIds.toLongArray(), longArrayOf(1, tokenIds.size.toLong()))
-        // Run the model
-        val outputTensor = module.forward(IValue.from(inputTensor)).toTensor()
-        // Get output token IDs and decode to text
-        val outputIds = outputTensor.dataAsLongArray()
-        return tokenizer.decode(outputIds)
+    fun generateAnswer(question: String, maxTokens: Int,
+                      temperature: Float, topK: Int): String {
+        // Format prompt with question
+        val prompt = "Question: $question\nAnswer:"
+        var currentPrompt = prompt
+
+        // Auto-regressive generation loop
+        repeat(maxTokens) {
+            val tokens = tokenizer.encode(currentPrompt)
+                .takeLast(blockSize).toLongArray()
+
+            // Create input tensor and run forward pass
+            val inputTensor = Tensor.fromBlob(tokens,
+                longArrayOf(1, tokens.size.toLong()))
+            val outputTensor = module.forward(
+                IValue.from(inputTensor)).toTensor()
+
+            // Apply temperature scaling and top-k sampling
+            val logits = outputTensor.dataAsFloatArray()
+            val nextToken = sampleToken(logits, temperature, topK)
+            currentPrompt += tokenizer.decode(longArrayOf(nextToken))
+
+            // Early stopping on sentence boundaries
+            if (shouldStop(currentPrompt, prompt)) break
+        }
+
+        return extractAnswer(currentPrompt, prompt)
     }
 }
 \end{lstlisting}
 
-In the above code, \texttt{BPETokenizer} is a custom Kotlin class we wrote to perform the same BPE encoding/decoding as used in Python. It reads the \texttt{vocab.json} and \texttt{merges.txt} (containing BPE rules) and implements \texttt{encode()} and \texttt{decode()} functions. Due to space constraints, we do not list its full code here, but it essentially replicates the byte-pair merge algorithm to segment strings into subwords and map them to IDs.
+In the above code, several key implementation details are noteworthy. The \texttt{assetFilePath()} helper function extracts the model from Flutter assets and caches it in the app's file directory for faster subsequent access. The \texttt{blockSize} of 128 tokens limits the context window, and we use \texttt{takeLast()} to keep only the most recent tokens when the conversation exceeds this limit.
 
-The Flutter side communicates with this \texttt{InferenceEngine} through a MethodChannel. In Dart, we set up:
+The \texttt{sampleToken()} function implements multiple sampling strategies: temperature scaling (dividing logits by temperature), top-k filtering (keeping only the k highest-probability tokens), top-p nucleus sampling (0.9 threshold), and repetition penalty (1.2x) to discourage token reuse. The \texttt{shouldStop()} function detects natural sentence boundaries (periods, question marks) or subsequent "Question:" patterns to terminate generation early, producing cleaner outputs. Finally, \texttt{extractAnswer()} removes the prompt prefix and cleans incomplete sentences.
+
+The \texttt{BPETokenizer} is a custom Kotlin class that replicates GPT-2's Byte Pair Encoding. It reads \texttt{vocab.json} and \texttt{merges.txt} from assets and implements \texttt{encode()} and \texttt{decode()} functions, applying the same merge rules as the Python tokenizer used during training to ensure consistency.
+
+The Flutter side communicates with the native Android code through a MethodChannel. In Dart, we set up:
 \begin{lstlisting}[caption={Dart code snippet calling the native inference via MethodChannel}, label={lst:dart}]
-static const platform = MethodChannel('farmer_ai/inference');
+static const platform = MethodChannel('com.example.farmer_ai_app/model');
 
-Future<String> getAnswer(String question) async {
+Future<void> _sendQuestion(String question) async {
+  setState(() {
+    _isLoading = true;
+  });
+
   try {
-    final String answer = await platform.invokeMethod('runInference', {"query": question});
-    return answer;
+    final String answer = await platform.invokeMethod('generateAnswer', {
+      'question': question,
+      'maxTokens': 250,
+      'temperature': 0.4,
+      'topK': 40,
+    });
+
+    setState(() {
+      _messages.add({'text': question, 'isUser': true});
+      _messages.add({'text': answer, 'isUser': false});
+      _isLoading = false;
+    });
   } on PlatformException catch (e) {
-    print("Failed to get answer: '${e.message}'.");
-    return "Error: Unable to get answer.";
+    setState(() {
+      _messages.add({'text': "Error: ${e.message}", 'isUser': false});
+      _isLoading = false;
+    });
   }
 }
 \end{lstlisting}
 
-On the Android side, we registered a \texttt{MethodCallHandler} for the channel \texttt{"farmer\_ai/inference"}; when \texttt{'runInference'} is called, the handler invokes \texttt{InferenceEngine.generateAnswer()} and returns its result back to Flutter. The result is then displayed in the chat UI (Listing~\ref{lst:dart}).
+On the Android side, we registered a \texttt{MethodCallHandler} for the channel \texttt{"com.example.farmer\_ai\_app/model"}. When the Dart code calls \texttt{'generateAnswer'} with inference parameters (question, maxTokens, temperature, topK), the handler executes the inference on a background thread using Kotlin coroutines to prevent UI blocking. The generated answer is then posted back to the main thread and returned to Flutter via \texttt{result.success()}, where it is displayed in the chat UI (Listing~\ref{lst:dart}).
 
-We also implemented minor logic to handle special cases: if the model returns an end-of-sequence token immediately (meaning it did not have an answer), we craft a fallback response like \textit{"I'm sorry, I don't have information on that."} to not leave the user empty-handed. Fortunately, such cases were rare in testing.
+The implementation includes several key features: loading state management during inference, proper error handling with user-friendly error messages, and the ability to tune inference parameters (temperature=0.4 for focused responses, topK=40 for quality-diversity balance, maxTokens=250 for response length control). We also implemented early stopping logic in the native code that terminates generation when encountering natural sentence boundaries, ensuring coherent and complete answers.
 
 \section{Testing and Debugging During Development}
 Throughout the implementation, we conducted unit tests and integration tests:
