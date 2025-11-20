@@ -439,58 +439,96 @@ Deploying the model on mobile required conversion and optimization steps. Using 
 The quantized TorchScript model (\texttt{model.pt}) along with the tokenizer files were then packaged into the Android app's assets. Memory-wise, when loaded, the model uses around 150--200 MB of RAM, which is acceptable for mid-tier phones (with 4 GB or more of RAM). We chose dynamic quantization (which only quantizes weights and computes activations in 32-bit) to avoid any accuracy loss in non-linear layers. More aggressive quantization (like full integer quantization) could further reduce size but would require more complex calibration.
 
 \section{Mobile App Integration}
-On the Android side, we integrated the PyTorch model using the \textit{PyTorch Android SDK}. In the app's native Kotlin code, the model is loaded at startup from the assets using \texttt{LiteModuleLoader}. The tokenizer files (vocabulary and merges) are read and used to construct an in-app tokenizer object.
+On the Android side, we integrated the PyTorch model using the \textit{PyTorch Android SDK}. In the app's native Kotlin code, the quantized TorchScript model (\texttt{farmer\_model\_torchscript.pt}, 104 MB) is loaded during the \texttt{ModelInference} class initialization using \texttt{Module.load()}. The model file is extracted from Flutter assets and cached to the app's internal storage for faster subsequent loads. The tokenizer files (\texttt{vocab.json} with 50,000 tokens and \texttt{merges.txt} with BPE rules) are loaded by the \texttt{BPETokenizer} class, which implements the same tokenization used during model training.
 
-Below is a snippet of the Kotlin code responsible for loading the model and performing inference when a query is received (Listing~\ref{lst:inference}). We implemented a singleton \texttt{InferenceEngine} class in Kotlin to hold the \texttt{Module} and tokenizer, and expose a method \texttt{generateAnswer(question: String): String}.
+Below is a snippet of the Kotlin code responsible for loading the model and performing inference when a query is received (Listing~\ref{lst:inference}). The \texttt{ModelInference} class encapsulates the PyTorch \texttt{Module} and tokenizer, exposing a method \texttt{generateAnswer()} that implements auto-regressive text generation.
 
 \begin{lstlisting}[caption={Kotlin code for loading the PyTorch model and running inference}, label={lst:inference}]
-object InferenceEngine {
-    private lateinit var module: Module
-    private lateinit var tokenizer: BPETokenizer
+class ModelInference(context: Context) {
+    private val module: Module
+    private val tokenizer: BPETokenizer
+    private val blockSize = 128  // Maximum context length
 
-    fun init(assetManager: AssetManager) {
+    init {
         // Load the serialized PyTorch model from app assets
-        val modelBytes = assetManager.open("model.pt").readBytes()
-        module = LiteModuleLoader.load(modelBytes)
-        // Load tokenizer (vocab and merges from assets)
-        tokenizer = BPETokenizer(assetManager.open("vocab.json"),
-                                  assetManager.open("merges.txt"))
+        val modelPath = assetFilePath(context,
+            "flutter_assets/assets/farmer_model_torchscript.pt")
+        module = Module.load(modelPath)
+        // Initialize BPE tokenizer
+        tokenizer = BPETokenizer(context)
     }
 
-    fun generateAnswer(question: String): String {
-        // Encode question text to tokens
-        val tokenIds = tokenizer.encode(question)
-        // Prepare input tensor of shape [1, seq_len]
-        val inputTensor = Tensor.fromBlob(tokenIds.toLongArray(), longArrayOf(1, tokenIds.size.toLong()))
-        // Run the model
-        val outputTensor = module.forward(IValue.from(inputTensor)).toTensor()
-        // Get output token IDs and decode to text
-        val outputIds = outputTensor.dataAsLongArray()
-        return tokenizer.decode(outputIds)
+    fun generateAnswer(question: String, maxTokens: Int,
+                      temperature: Float, topK: Int): String {
+        // Format prompt with question
+        val prompt = "Question: $question\nAnswer:"
+        var currentPrompt = prompt
+
+        // Auto-regressive generation loop
+        repeat(maxTokens) {
+            val tokens = tokenizer.encode(currentPrompt)
+                .takeLast(blockSize).toLongArray()
+
+            // Create input tensor and run forward pass
+            val inputTensor = Tensor.fromBlob(tokens,
+                longArrayOf(1, tokens.size.toLong()))
+            val outputTensor = module.forward(
+                IValue.from(inputTensor)).toTensor()
+
+            // Apply temperature scaling and top-k sampling
+            val logits = outputTensor.dataAsFloatArray()
+            val nextToken = sampleToken(logits, temperature, topK)
+            currentPrompt += tokenizer.decode(longArrayOf(nextToken))
+
+            // Early stopping on sentence boundaries
+            if (shouldStop(currentPrompt, prompt)) break
+        }
+
+        return extractAnswer(currentPrompt, prompt)
     }
 }
 \end{lstlisting}
 
-In the above code, \texttt{BPETokenizer} is a custom Kotlin class we wrote to perform the same BPE encoding/decoding as used in Python. It reads the \texttt{vocab.json} and \texttt{merges.txt} (containing BPE rules) and implements \texttt{encode()} and \texttt{decode()} functions. Due to space constraints, we do not list its full code here, but it essentially replicates the byte-pair merge algorithm to segment strings into subwords and map them to IDs.
+In the above code, several key implementation details are noteworthy. The \texttt{assetFilePath()} helper function extracts the model from Flutter assets and caches it in the app's file directory for faster subsequent access. The \texttt{blockSize} of 128 tokens limits the context window, and we use \texttt{takeLast()} to keep only the most recent tokens when the conversation exceeds this limit.
 
-The Flutter side communicates with this \texttt{InferenceEngine} through a MethodChannel. In Dart, we set up:
+The \texttt{sampleToken()} function implements multiple sampling strategies: temperature scaling (dividing logits by temperature), top-k filtering (keeping only the k highest-probability tokens), top-p nucleus sampling (0.9 threshold), and repetition penalty (1.2x) to discourage token reuse. The \texttt{shouldStop()} function detects natural sentence boundaries (periods, question marks) or subsequent "Question:" patterns to terminate generation early, producing cleaner outputs. Finally, \texttt{extractAnswer()} removes the prompt prefix and cleans incomplete sentences.
+
+The \texttt{BPETokenizer} is a custom Kotlin class that replicates GPT-2's Byte Pair Encoding. It reads \texttt{vocab.json} and \texttt{merges.txt} from assets and implements \texttt{encode()} and \texttt{decode()} functions, applying the same merge rules as the Python tokenizer used during training to ensure consistency.
+
+The Flutter side communicates with the native Android code through a MethodChannel. In Dart, we set up:
 \begin{lstlisting}[caption={Dart code snippet calling the native inference via MethodChannel}, label={lst:dart}]
-static const platform = MethodChannel('farmer_ai/inference');
+static const platform = MethodChannel('com.example.farmer_ai_app/model');
 
-Future<String> getAnswer(String question) async {
+Future<void> _sendQuestion(String question) async {
+  setState(() {
+    _isLoading = true;
+  });
+
   try {
-    final String answer = await platform.invokeMethod('runInference', {"query": question});
-    return answer;
+    final String answer = await platform.invokeMethod('generateAnswer', {
+      'question': question,
+      'maxTokens': 250,
+      'temperature': 0.4,
+      'topK': 40,
+    });
+
+    setState(() {
+      _messages.add({'text': question, 'isUser': true});
+      _messages.add({'text': answer, 'isUser': false});
+      _isLoading = false;
+    });
   } on PlatformException catch (e) {
-    print("Failed to get answer: '${e.message}'.");
-    return "Error: Unable to get answer.";
+    setState(() {
+      _messages.add({'text': "Error: ${e.message}", 'isUser': false});
+      _isLoading = false;
+    });
   }
 }
 \end{lstlisting}
 
-On the Android side, we registered a \texttt{MethodCallHandler} for the channel \texttt{"farmer\_ai/inference"}; when \texttt{'runInference'} is called, the handler invokes \texttt{InferenceEngine.generateAnswer()} and returns its result back to Flutter. The result is then displayed in the chat UI (Listing~\ref{lst:dart}).
+On the Android side, we registered a \texttt{MethodCallHandler} for the channel \texttt{"com.example.farmer\_ai\_app/model"}. When the Dart code calls \texttt{'generateAnswer'} with inference parameters (question, maxTokens, temperature, topK), the handler executes the inference on a background thread using Kotlin coroutines to prevent UI blocking. The generated answer is then posted back to the main thread and returned to Flutter via \texttt{result.success()}, where it is displayed in the chat UI (Listing~\ref{lst:dart}).
 
-We also implemented minor logic to handle special cases: if the model returns an end-of-sequence token immediately (meaning it did not have an answer), we craft a fallback response like \textit{"I'm sorry, I don't have information on that."} to not leave the user empty-handed. Fortunately, such cases were rare in testing.
+The implementation includes several key features: loading state management during inference, proper error handling with user-friendly error messages, and the ability to tune inference parameters (temperature=0.4 for focused responses, topK=40 for quality-diversity balance, maxTokens=250 for response length control). We also implemented early stopping logic in the native code that terminates generation when encountering natural sentence boundaries, ensuring coherent and complete answers.
 
 \section{Testing and Debugging During Development}
 Throughout the implementation, we conducted unit tests and integration tests:
