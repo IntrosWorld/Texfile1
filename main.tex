@@ -3,6 +3,7 @@
 % Packages
 \usepackage[utf8]{inputenc}
 \usepackage{graphicx}
+\usepackage{svg}
 \usepackage{tikz}
 \usepackage{pgfplots}
 \pgfplotsset{compat=1.17}
@@ -45,26 +46,7 @@
     \begin{center}
         \vspace*{-1cm}
         % NIT Rourkela Logo
-        \begin{tikzpicture}[scale=0.6]
-            % Outer circle
-            \draw[line width=2pt, blue!70!black] (0,0) circle (2.5cm);
-            % Inner circle
-            \draw[line width=1.5pt, blue!70!black] (0,0) circle (2.2cm);
-            % Central emblem - gear/cog representing technology
-            \foreach \angle in {0,45,90,135,180,225,270,315} {
-                \draw[fill=blue!60!black, line width=0.5pt]
-                    (\angle:1cm) -- (\angle+22.5:1.3cm) -- (\angle+45:1cm) -- cycle;
-            }
-            % Inner circle for emblem
-            \draw[fill=blue!40!white, line width=1pt] (0,0) circle (0.8cm);
-            % Stylized "N" in center
-            \node[font=\Large\bfseries, blue!70!black] at (0,0) {NIT};
-            % Top arc text - institute name
-            \node[font=\small\bfseries, blue!70!black] at (0,2.8) {NATIONAL INSTITUTE};
-            \node[font=\small\bfseries, blue!70!black] at (0,2.4) {OF TECHNOLOGY};
-            % Bottom text
-            \node[font=\footnotesize\bfseries, blue!70!black] at (0,-2.6) {ROURKELA};
-        \end{tikzpicture}\\[0.5em]
+        \includesvg[width=0.15\textwidth]{logo.svg}\\[0.5em]
         \textsc{\Large National Institute of Technology Rourkela}\\[0.5em]
         \textsc{\large Department of Electronics and Communication \& Engineering}\\[1.5em]
         \textbf{\LARGE Farmer AI Assistant - Offline Mobile Agriculture Advisor}\\[1em]
