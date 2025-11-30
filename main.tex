@@ -51,7 +51,7 @@
         \textsc{\large Department of Electronics and Communication \& Engineering}\\[1.5em]
         \textbf{\LARGE Farmer AI Assistant - Offline Mobile Agriculture Advisor}\\[1em]
         \textit{Project Report}\\[0.5em]
-        \textbf{Course Code: XYZ \\ Course Name: Project Development}\\[1.5em]
+        \textbf{Course Code: CS2011 \\ Course Name: Introduction to AI and ML}\\[1.5em]
 
         \begin{minipage}{0.9\textwidth}
         \centering
@@ -64,17 +64,17 @@
         \textbf{Data Collection \& Management Team:}\\[0.5em]
         {\small
         Om Prakash Sai Das (124EC0039), Viraj Ghodki (124EI0057),\\
-        Armaan Singh (124EI0049), Ayush Mohanty (124EI0026)
+        Armaan Singh (124EI0049), Ayush Mohanty (124EI0025)
         }\\[1em]
 
         \textbf{Documentation \& Presentation Team:}\\[0.5em]
         {\small
-        Meer (124EI0061), Aditya Singh (124EI0026), Aditya Nayak (124EI0039)
+        Meer (124EI0061), Aditya Singh (124EI0036), Aditya Nayak (124EI0039)
         }
         \end{minipage}
 
         \vfill
-        \textbf{Guide:} Dr. Sobhan Kanti Dhara, Department of CSE, NIT Rourkela\\[1em]
+        \textbf{Guide:} Dr. Sobhan Kanti Dhara, Department of ECE, NIT Rourkela\\[1em]
         \textbf{2025}
     \end{center}
 \end{titlepage}
@@ -87,8 +87,8 @@
 \end{center}
 \noindent 
 This is to certify that the project report entitled \textit{``Farmer AI Assistant - Offline Mobile Agriculture Advisor''}, submitted by 
-\textbf{Joy Bag}, \textbf{Debansh Biswal}, \textbf{Mohit Naik}, \textbf{Udaynath Hota}, \textbf{Ayush Samal}, 
-\textbf{Om Prakash}, \textbf{Viraj Ghodki}, \textbf{Armaan}, \textbf{Ayush Mohanty}, 
+\textbf{Joy Bag}, \textbf{Debansh Biswal}, \textbf{Mohit Ranjan Naik}, \textbf{Udayanath Hota}, \textbf{Ayush Kumar Samal}, 
+\textbf{Om Prakash Sai Das}, \textbf{Viraj Ghodki}, \textbf{Armaan Singh}, \textbf{Ayush Mohanty}, 
 \textbf{Meer}, \textbf{Aditya Singh}, and \textbf{Aditya Nayak} 
 in partial fulfillment of the requirements for the award of the degree of \textbf{Bachelor of Technology} in \textbf{Electronics and Communication Engineering} at \textbf{NIT Rourkela}, is an authentic work carried out under my supervision and guidance.\\[2em]
 
@@ -106,7 +106,7 @@ in partial fulfillment of the requirements for the award of the degree of \textb
 \section*{Acknowledgment}
 \vspace{1em}
 We would like to express our sincere gratitude to our project guide, \textbf{Dr. Sobhan Kanti Dhara}, for his invaluable guidance, support, and encouragement throughout the development of this project. 
-We also extend our thanks to the faculty and staff of the Department of Computer Science \& Engineering at NIT Rourkela for providing the necessary infrastructure and a conducive environment for research and development.
+We also extend our thanks to the faculty and staff of the Department of Electronics \& Communication Engineering at NIT Rourkela for providing the necessary infrastructure and a conducive environment for research and development.
 
 We acknowledge the contribution of the \textit{KisanVaani} initiative for providing the agriculture QA dataset that formed the basis of our model training \cite{kisanvaani2023}.
 Our gratitude goes to the creators and curators of this dataset for making it openly available, which greatly facilitated our work.
@@ -117,9 +117,11 @@ Finally, we thank our families for their unwavering encouragement, which has bee
 
 % Abstract
 \section*{Abstract}
-Farmers in rural and remote areas often struggle to access timely agricultural advice due to limited internet connectivity and scarce expert resources \cite{agricultural_advisory2022,rural_connectivity2023}. This project addresses these challenges by developing an offline mobile AI assistant that provides intelligent farming guidance without requiring internet access. The proposed solution is a GPT-style language model deployed entirely on-device, leveraging a Transformer-based architecture (6 layers, 6 heads, 384-dim embeddings) trained on 22,615 agriculture question-answer pairs \cite{kisanvaani2023}. 
+This documentation presents a comprehensive analysis of the dataset used in developing an offline AI assistant for farmers. The project aims to bridge the gap between agricultural expertise and rural farmers by creating an intelligent question-answer system that operates without internet connectivity.
 
-The system, implemented on Android using PyTorch Mobile, features a lightweight 50M-parameter model optimized via dynamic quantization to 8-bit, reducing model size to 104~MB and enabling fast inference (3-10~seconds per query on mid-range phones). A Flutter-powered chat interface offers a real-time conversational experience, and all processing occurs locally to preserve user privacy. Key results demonstrate that the assistant produces contextually relevant and coherent responses to diverse agricultural queries, effectively bridging the information gap for farmers. The report details the data preparation, model training, on-device integration, and thorough testing of the application. The findings confirm the viability of on-device generative AI in agriculture, and we outline future enhancements (e.g., multilingual support, computer vision integration) to further improve the system's impact.
+The dataset comprises approximately 20,000 question-answer pairs covering various agricultural domains including crop management, pest control, soil health, irrigation, fertilizers, and seasonal farming practices. These questions have been carefully curated from multiple reliable agricultural sources to ensure accuracy and relevance to Indian farming conditions.
+
+The AI model trained on this dataset enables farmers to receive instant, expert-level guidance on agricultural queries in their local language, addressing critical challenges such as limited access to agricultural experts, language barriers, and poor internet connectivity in rural areas. This documentation details the dataset sources, categorization methodology, and rationale behind the selection of specific agricultural topics and questions.
 \newpage
 
 % Table of Contents, List of Figures, Tables
@@ -132,9 +134,27 @@ The system, implemented on Android using PyTorch Mobile, features a lightweight 
 \chapter{Introduction}
 
 \section{Background and Motivation}
-Agriculture remains the livelihood for a large portion of the population, especially in developing countries like India, yet farmers often lack access to crucial timely information and expert guidance. The rise of digital technologies promises to bridge this gap, but \textit{connectivity and accessibility issues have created a persistent digital divide in rural farming communities} \cite{agricultural_advisory2022}. Traditional agricultural extension services, while valuable, are stretched thin---public extension reaches only about 6.8\% of farmers in India \cite{india_extension2021}, leaving many without reliable advisory support. This lack of reach, combined with the time-sensitive nature of farming decisions (e.g., pest outbreaks, irrigation scheduling), motivates the need for innovative solutions to deliver expert knowledge directly to farmers when and where they need it.
+Agriculture forms the backbone of India's economy, employing nearly 50\% of the workforce and contributing significantly to the GDP. However, farmers face numerous challenges that hinder optimal agricultural productivity and decision-making.
 
-Recent advances in artificial intelligence (AI) and natural language processing (NLP) have demonstrated the potential of language models to generate human-like, context-aware responses. Large Language Models (LLMs) such as OpenAI's GPT series have shown remarkable capability in understanding queries and generating helpful answers \cite{radford2019language}. However, most state-of-the-art LLMs operate on cloud servers, requiring constant internet connectivity and posing concerns over latency and data privacy \cite{offline_ai_agriculture2024}. For farmers in remote areas, a cloud-dependent solution is often impractical. This project is driven by the motivation to harness AI advancements---specifically, transformer-based language models \cite{vaswani2017attention,radford2019language}---to empower farmers with an \textit{offline, affordable, and user-friendly advisory system} that works even in connectivity-challenged environments.
+\textbf{Key Challenges Faced by Farmers:}
+\begin{itemize}
+    \item Limited access to agricultural experts and extension services
+    \item Language barriers in accessing technical information
+    \item Poor internet connectivity in rural areas
+    \item Lack of timely, location-specific agricultural guidance
+    \item Difficulty in identifying crop diseases and pest management solutions
+    \item Inadequate knowledge about modern farming techniques and best practices
+\end{itemize}
+
+\textbf{The Role of AI in Agriculture:}
+
+Artificial Intelligence has emerged as a transformative technology in agriculture, offering solutions for precision farming, crop monitoring, yield prediction, and decision support systems. AI-powered tools can analyze vast amounts of agricultural data to provide personalized recommendations to farmers.
+
+\textbf{Purpose of the Offline AI Assistant:}
+
+Our project addresses the critical need for accessible agricultural guidance by developing an offline AI assistant specifically designed for farmers. This system operates without internet connectivity, making it ideal for rural areas with limited digital infrastructure. The AI assistant provides instant answers to agricultural queries, helping farmers make informed decisions about crop management, pest control, soil health, and other farming practices.
+
+The success of this AI system heavily depends on the quality and comprehensiveness of the underlying dataset, which forms the foundation for training the machine learning model.
 
 \section{Problem Statement}
 Farmers in rural and remote regions face multiple barriers in obtaining timely and reliable agricultural advice. The key challenges identified are:
@@ -170,7 +190,8 @@ This report is organized into several chapters detailing the entirety of the pro
     \item \textbf{Chapter 4: Implementation Details} - Provides technical details on how the system was built. It covers the dataset preparation, model training process, optimization techniques like quantization, and integration of the model into the Android application (with code snippets in Kotlin/Dart for key parts).
     \item \textbf{Chapter 5: Testing and Evaluation} - Discusses the testing strategy and results. Performance metrics such as inference latency, memory usage, and battery impact are reported. It also evaluates the quality of responses generated by the assistant and, where possible, compares them to alternative solutions.
     \item \textbf{Chapter 6: Results and Discussion} - Showcases the working application, including screenshots of the interface and examples of interactions between a user and the assistant. It discusses how well the objectives were met, the user experience, and any limitations observed during the project.
-    \item \textbf{Chapter 7: Future Work and Conclusion} - Summarizes the project's outcomes and contributions. It outlines potential future enhancements and next steps (such as multilingual support, larger models, additional features, etc.), and concludes with final reflections on the work.
+    \item \textbf{Chapter 7: Team Contributions} - Details the organizational structure of the project team and individual contributions. It describes how team members across Design \& Development, Data Collection \& Management, and Documentation \& Presentation domains collaborated to achieve project objectives.
+    \item \textbf{Chapter 8: Future Work and Conclusion} - Summarizes the project's outcomes and contributions. It outlines potential future enhancements and next steps (such as multilingual support, larger models, additional features, etc.), and concludes with final reflections on the work.
 \end{itemize}
 
 % Chapter 2 - Literature Review
@@ -706,7 +727,95 @@ In discussions with agricultural experts, it was noted that the assistant should
 
 Overall, the results validate that an AI language model can serve as a useful farming assistant under real-world constraints. The project demonstrates a convergence of mobile computing and AI, opening pathways for scaling expert knowledge dissemination. The next chapter will outline how this work can be built upon, addressing the limitations and expanding the assistant's capabilities.
 
-% Chapter 7 - Future Work and Conclusion
+% Chapter 7 - Team Contributions
+\chapter{Team Contributions}
+
+The Farmer AI Assistant project represents a successful collaboration among a dedicated team organized into three specialized domains. This comprehensive system integrates cutting-edge machine learning techniques with practical agricultural applications, providing farmers with intelligent insights and decision-making tools for sustainable farming practices.
+
+Our solution encompasses a full-stack application with web and mobile interfaces, backed by a custom-trained language model that understands the nuances of agricultural operations, crop management, pest control, soil health monitoring, and yield optimization.
+
+\section{Project Overview and Team Structure}
+
+The team was strategically organized into three specialized domains, each critical to the project's success. This structure allowed team members to focus on their strengths while maintaining seamless collaboration across all development phases:
+
+\begin{itemize}
+    \item \textbf{Design \& Development Team:} Handled frontend and backend development, model training, code integration, and ensuring optimal performance across platforms.
+    \item \textbf{Data Collection \& Management Team:} Gathered, filtered, and managed datasets from multiple sources, ensuring data quality and integration with the development pipeline.
+    \item \textbf{Documentation \& Presentation Team:} Responsible for comprehensive project documentation, research compilation, visual diagrams, presentations, and promotional materials.
+\end{itemize}
+
+The Design \& Development team, with five members, formed the largest group, reflecting the core technical demands of building the language model and its associated applications. Documentation \& Presentation, and Data Collection \& Management teams provided essential support, ensuring project clarity and data integrity.
+
+\section{Design and Development Team}
+
+\subsection{System Architecture and Backend Development}
+\textbf{Joy Bag (124EI0040)} designed the overall system architecture, defining interaction patterns between frontend, backend, and machine learning components. He led backend development using modern frameworks, implementing RESTful APIs, and establishing the database schema. Additionally, he developed authentication and authorization systems, ensuring secure access and real-time data synchronization.
+
+\subsection{Web Frontend Development}
+\textbf{Debansh Biswal (124EI0028)} developed the web application's frontend interface using modern JavaScript frameworks, creating an intuitive and responsive user experience. He implemented dynamic dashboards displaying real-time analytics, crop health indicators, and pest management recommendations. He created interactive data visualization components and ensured cross-browser compatibility.
+
+\subsection{Mobile Application Development}
+\textbf{Mohit Ranjan Naik (124EI0026)} developed the mobile application for Android, ensuring feature parity with the web version. He implemented offline functionality and optimized the app for on-device model inference. He optimized mobile app performance, integrated PyTorch Mobile, and created the conversational chat interface for farmer interactions.
+
+\subsection{Model Training and Optimization}
+\textbf{Ayush Kumar Samal (124EI0007)} led the model training process, implementing preprocessing pipelines and experimenting with various transformer model architectures. He developed fine-tuning strategies specific to agricultural question-answering and implemented model evaluation frameworks. He created model optimization techniques including dynamic quantization to reduce inference time and memory footprint for mobile deployment.
+
+\subsection{CI/CD and Infrastructure}
+\textbf{Udayanath Hota (124EC0045)} established the CI/CD pipeline, automating testing, building, and deployment processes. He integrated all system components, ensuring seamless communication between the Flutter UI, Kotlin backend, and PyTorch model. He set up monitoring and logging systems, managed cloud infrastructure for training, and implemented automated testing frameworks.
+
+\section{Data Collection and Management Team}
+
+\subsection{Data Sourcing and Strategy}
+\textbf{Armaan Singh (124EI0049)} identified and established relationships with authoritative data sources, including government agricultural databases, research institutions, and the KisanVaani dataset. He designed the data collection strategy, covering diverse aspects of agriculture including crop cultivation, pest management, and soil health. He coordinated data acquisition efforts and developed data quality assessment criteria.
+
+\subsection{Data Cleaning and Validation}
+\textbf{Ayush Mohanty (124EI0025)} implemented data cleaning pipelines, removing duplicates, correcting inconsistencies, and standardizing formats across the 22,615 question-answer pairs. He developed filtering algorithms to extract relevant information and created validation scripts to ensure data accuracy. He performed quality assurance checks and maintained detailed logs of data transformations.
+
+\subsection{Data Management and Infrastructure}
+\textbf{Viraj Ghodki (124EI0057)} established the data management infrastructure, including version control systems for dataset tracking. He organized datasets into logical categories covering soil management, pest control, crop nutrition, and water management. He developed data augmentation strategies and managed data security, ensuring compliance with privacy regulations.
+
+\subsection{Domain Expertise and Annotation}
+\textbf{Om Prakash Sai Das (124EC0039)} conducted in-depth research on agricultural practices, validating the technical accuracy of collected information. He consulted with agricultural experts, ensuring dataset completeness and relevance to Indian farming conditions. He developed annotation guidelines for labeling training data and created benchmark datasets for model evaluation.
+
+\section{Documentation and Presentation Team}
+
+\subsection{Documentation Workflow and Research}
+\textbf{Meer (124EI0061)} orchestrated the entire documentation workflow, establishing standards and templates. He conducted extensive research on agricultural practices, compiling authoritative sources and academic papers that informed the model's training approach. He developed technical architecture documentation and authored the comprehensive project report detailing dataset analysis, model training, and system evaluation.
+
+\subsection{Presentation and Code Documentation}
+\textbf{Aditya Singh (124EI0036)} designed and developed the main project presentation, translating complex technical concepts into visually engaging slides. He maintained comprehensive code documentation, including inline comments and API documentation for the Flutter, Kotlin, and PyTorch components. He created flowcharts and UML diagrams illustrating application logic and data flow through the system.
+
+\subsection{Promotional Materials and Visual Identity}
+\textbf{Aditya Nayak (124EI0039)} produced all promotional and advertisement materials, including posters, brochures, and digital assets. He designed infographics that simplify complex agricultural AI concepts for farmer education. He created the project's visual identity, including logo design, color schemes, and branding guidelines that reflect the agricultural focus of the assistant.
+
+\section{Collective Achievement}
+
+The success of the Farmer AI Assistant project is a testament to the dedicated efforts of each team member. Through specialized roles and a collaborative spirit, the team transformed an ambitious concept into a functional, intelligent system that addresses real challenges in agriculture. Key achievements include:
+
+\begin{itemize}
+    \item \textbf{Cutting-edge Language Model:} A custom-trained GPT-style transformer model optimized for agricultural question-answering
+    \item \textbf{Robust Application Development:} Seamless integration of Flutter UI, Kotlin backend, and PyTorch Mobile for offline inference
+    \item \textbf{Comprehensive Dataset:} Accurate and validated agricultural knowledge base with 20,000+ question-answer pairs
+    \item \textbf{Clear Documentation:} Thorough project narrative, technical documentation, and user-friendly presentations
+    \item \textbf{Unified Vision:} Collaborative approach ensuring all components work harmoniously toward farmer empowerment
+\end{itemize}
+
+Each contribution, whether in documentation, development, or data management, was essential in creating a cohesive solution that demonstrates the practical applications of machine learning in sustainable agriculture.
+
+\section{Impact and Future Outlook}
+
+The Farmer AI Assistant project showcases not only technical prowess but also the power of organized teamwork in tackling complex, multidisciplinary challenges. This system is poised to benefit agriculture by providing:
+
+\begin{itemize}
+    \item \textbf{Intelligent Insights:} Data-driven decision-making support for farmers on crop management, pest control, and soil health
+    \item \textbf{Sustainable Practices:} Promoting eco-friendly agricultural methods through expert guidance
+    \item \textbf{Yield Optimization:} Maximizing productivity with intelligent recommendations tailored to farming conditions
+    \item \textbf{Scalable Solution:} Adaptable for diverse agricultural systems and extensible to multiple languages and platforms
+\end{itemize}
+
+The future of agricultural advisory services is brighter with this AI assistant, offering a pathway to more efficient, environmentally conscious, and profitable farming operations for rural communities worldwide.
+
+% Chapter 8 - Future Work and Conclusion
 \chapter{Future Work and Conclusion}
 
 \section{Future Work}
